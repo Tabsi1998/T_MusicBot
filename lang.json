@@ -97,7 +97,8 @@
     "lyrics_help": "Zeigt die Songtexte des aktuellen Liedes an.",
     "loop_help": "Schaltet das Wiederholen des aktuellen Songs ein oder aus.",
     "shuffle_help": "Mischt die aktuelle Warteschlange.",
-    "search_help": "Sucht nach einem Song und lässt dich auswählen, welchen du abspielen möchtest."
+    "search_help": "Sucht nach einem Song und lässt dich auswählen, welchen du abspielen möchtest.",
+    "no_voice_client": "Der Bot ist momentan nicht in einem Sprachkanal verbunden."
   },
   "it": {
     "no_voice_channel": "Devi essere in un canale vocale affinché il bot possa unirsi!",

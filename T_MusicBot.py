@@ -567,14 +567,18 @@ async def volume_cmd(ctx, value: int = None):
     if value is None:
         await ctx.send(lang['volume_prompt'].format(prefix=config['command_prefix']))
         return
-    if ctx.voice_client and 1 <= value <= 100:
+    if value < 1 or value > 100:
+        await ctx.send(lang['invalid_volume'])  # Neue Fehlermeldung für Werte außerhalb des Bereichs
+        return
+
+    if ctx.voice_client and ctx.voice_client.source:
         volume = value
         save_volume(volume)  # Lautstärke in config.json speichern
-        if ctx.voice_client.source:
-            ctx.voice_client.source.volume = volume / 100
+        ctx.voice_client.source.volume = volume / 100
         await ctx.send(lang['volume_set'].format(volume=volume))
     else:
-        await ctx.send(lang['invalid_volume'])
+        await ctx.send(lang['no_voice_client'])  # Fehlermeldung, wenn kein Voice Client vorhanden ist
+
 
 # Pause Command
 pause_name, pause_aliases = get_command_info('pause')
