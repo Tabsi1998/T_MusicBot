@@ -1,4 +1,3 @@
-```markdown
 # Discord Music Bot 🎶
 
 Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und Spotify abspielt, mit Unterstützung für mehrere Sprachen und interaktiven Steuerelementen direkt in Discord.
