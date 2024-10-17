@@ -1,7 +1,3 @@
-Natürlich! Du möchtest deine README-Datei so aktualisieren, dass sie einen Link zu deiner `Ubuntu-Server_Install.md` enthält. Hier ist die aktualisierte README mit dem Link eingefügt:
-
----
-
 # Discord Music Bot 🎶
 
 Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und Spotify abspielen kann. Er unterstützt mehrere Sprachen, interaktive Steuerungen direkt in Discord und bietet ein modernes, benutzerfreundliches Design.
@@ -127,6 +123,10 @@ Für eine detaillierte Anleitung zur Installation auf einem Ubuntu-Server, siehe
        "loop": {
          "name": "loop",
          "aliases": ["repeat", "wiederholen"]
+       },
+       "setlang": {
+         "name": "setlang",
+         "aliases": ["language"]
        }
      }
    }
@@ -151,7 +151,7 @@ Für eine detaillierte Anleitung zur Installation auf einem Ubuntu-Server, siehe
 Starte den Bot mit:
 
 ```bash
-python music_bot.py
+python python/T_MusicBot.py
 ```
 
 ### Den Bot zu deinem Server hinzufügen
@@ -159,7 +159,6 @@ python music_bot.py
 1. Gehe zum Discord Developer Portal, wähle deine Anwendung und navigiere zu **"OAuth2" > "URL Generator"**.
 2. Wähle die Scopes **"bot"** und **"applications.commands"**.
 3. Unter **Bot Permissions** wähle die erforderlichen Berechtigungen:
-
    - **General Permissions**:
      - Lesen von Nachrichten/Verlauf
      - Nachrichten senden
@@ -168,8 +167,7 @@ python music_bot.py
    - **Voice Permissions**:
      - Sprachkanäle betreten
      - Sprachübertragung
-
-4. Kopiere die generierte URL und füge den Bot damit zu deinem Server hinzu.
+4. Kopiere die generierte URL und öffne sie in deinem Browser, um den Bot zu deinem Server hinzuzufügen.
 
 ## Befehle
 
@@ -182,6 +180,8 @@ python music_bot.py
 - **`!volume <1-100>`**: Stellt die Wiedergabelautstärke ein.
 - **`!queue`**: Zeigt die aktuelle Song-Warteschlange an.
 - **`!help`**: Zeigt die Hilfenachricht mit allen verfügbaren Befehlen an.
+- **`!loop`**: Aktiviert oder deaktiviert die Schleife für den aktuellen Song.
+- **`!setlang <sprachcode>`**: Setzt die Sprache des Bots (z.B. `en`, `de`, `it`, `fr`).
 
 ### Interaktive Steuerung über Reaktionen
 
@@ -280,6 +280,10 @@ Beiträge sind willkommen! Bitte folge diesen Schritten:
 
    Gehe zu deinem Repository auf GitHub und öffne einen neuen Pull Request.
 
+## Lizenz
+
+Dieses Projekt ist unter der [MIT-Lizenz](LICENSE) lizenziert. Weitere Informationen findest du in der `LICENSE`-Datei.
+
 ---
 
 **Viel Spaß mit der Musik!** Wenn du Probleme hast oder Vorschläge für neue Features hast, öffne gerne ein Issue oder einen Pull Request.
@@ -291,25 +295,3 @@ Beiträge sind willkommen! Bitte folge diesen Schritten:
 Dieser Bot wurde mit Fokus auf Benutzerfreundlichkeit und Erweiterbarkeit entwickelt. Bei der Implementierung wurden bewährte Praktiken berücksichtigt, um einen stabilen und zuverlässigen Musikbot für deine Discord-Community bereitzustellen.
 
 **Vielen Dank für die Nutzung dieses Bots!**
-
----
-
-Jetzt enthält deine README-Datei einen Link zu deiner `Ubuntu-Server_Install.md` im Abschnitt **Installation**. Stelle sicher, dass die `Ubuntu-Server_Install.md` in deinem Repository vorhanden ist und die detaillierten Anweisungen zur Installation auf einem Ubuntu-Server enthält.
-
-Wenn du möchtest, kannst du auch im Inhaltsverzeichnis einen direkten Link zur Ubuntu-Server-Installation hinzufügen:
-
-## Inhaltsverzeichnis
-
-- [Installation](#installation)
-  - [Ubuntu Server Installation](Ubuntu-Server_Install.md)
-- [Konfiguration](#konfiguration)
-- [Verwendung](#verwendung)
-- [Befehle](#befehle)
-- [Sprachunterstützung](#sprachunterstützung)
-- [Abhängigkeiten](#abhängigkeiten)
-- [Mitwirken](#mitwirken)
-- [Lizenz](#lizenz)
-
-Damit ist der Link auch im Inhaltsverzeichnis sichtbar und leicht zugänglich.
-
-Falls du weitere Unterstützung benötigst oder Fragen hast, stehe ich gerne zur Verfügung!

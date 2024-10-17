@@ -20,7 +20,7 @@ logging.basicConfig(filename='error.log', level=logging.ERROR, format='%(asctime
 # Konfigurationsdatei laden
 def load_config():
     try:
-        with open('config.json', 'r', encoding='utf-8') as f:
+        with open('config/config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
@@ -31,7 +31,7 @@ config = load_config()  # Konfiguration laden
 # Sprachdatei laden
 def load_language(language_code):
     try:
-        with open('lang.json', 'r', encoding='utf-8') as f:
+        with open('config/lang.json', 'r', encoding='utf-8') as f:
             languages = json.load(f)
             default_language = languages.get('en') or next(iter(languages.values()))
             return languages.get(language_code, default_language)
@@ -76,7 +76,7 @@ def save_volume(volume):
     global config
     try:
         config['default_volume'] = volume
-        with open('config.json', 'w', encoding='utf-8') as f:
+        with open('config/config.json', 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"Error saving config.json: {e}")
