@@ -1,17 +1,19 @@
 # Discord Music Bot 🎶
 
-Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und Spotify abspielt, mit Unterstützung für mehrere Sprachen und interaktiven Steuerelementen direkt in Discord.
+Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und Spotify abspielen kann. Er unterstützt mehrere Sprachen, interaktive Steuerungen direkt in Discord und bietet ein modernes, benutzerfreundliches Design.
 
-## Features
+## Funktionen
 
-- **Musik abspielen**: Streame hochwertige Audiodateien von YouTube und Spotify.
+- **Musik abspielen**: Streame hochwertige Audiodateien von YouTube und Spotify direkt in deinen Sprachkanal.
 - **Playlist-Unterstützung**: Lade ganze Playlists oder einzelne Songs von YouTube und Spotify.
-- **Lokalisierung**: Mehrsprachige Unterstützung mit leicht editierbaren Sprachdateien.
-- **Lautstärkeregelung**: Passe die Wiedergabelautstärke an, Einstellungen werden zwischen den Sitzungen gespeichert.
-- **Interaktive Steuerung**: Verwende Reaktions-Emojis, um die Wiedergabe direkt aus der "Jetzt spielt"-Nachricht zu steuern.
-- **Warteschlangen-System**: Zeige und verwalte die aktuelle Song-Warteschlange.
-- **Automatische Wiederverbindung**: Der Bot stellt die Verbindung zum Sprachkanal bei unerwarteter Trennung wieder her.
+- **Mehrsprachigkeit**: Unterstützung für mehrere Sprachen (Deutsch, Englisch, Italienisch, Französisch) mit leicht editierbaren Sprachdateien.
+- **Interaktive Steuerung**: Verwende Reaktions-Emojis, um die Wiedergabe direkt aus der "Jetzt spielt"-Nachricht zu steuern (Play/Pause, Nächstes Lied, Vorheriges Lied, Stop).
+- **Warteschlangen-System**: Füge Songs zur Warteschlange hinzu und zeige die aktuelle Warteschlange an.
+- **Lautstärkeregelung**: Passe die Wiedergabelautstärke an; die Einstellungen werden zwischen den Sitzungen gespeichert.
+- **Song-Historie**: Gehe zu vorherigen Songs zurück und höre sie erneut.
+- **Fortschrittsanzeige**: Zeigt einen modernen Fortschrittsbalken für den aktuellen Song an.
 - **Persistente Einstellungen**: Lautstärkeeinstellungen werden gespeichert und bleiben nach einem Neustart erhalten.
+- **Fehlerlogging**: Alle Fehler werden in einer `error.log`-Datei protokolliert.
 
 ## Inhaltsverzeichnis
 
@@ -19,12 +21,19 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
 - [Konfiguration](#konfiguration)
 - [Verwendung](#verwendung)
 - [Befehle](#befehle)
-- [Lokalisierung](#lokalisierung)
+- [Sprachunterstützung](#sprachunterstützung)
 - [Abhängigkeiten](#abhängigkeiten)
 - [Mitwirken](#mitwirken)
 - [Lizenz](#lizenz)
 
 ## Installation
+
+### Voraussetzungen
+
+- **Python 3.8** oder höher
+- **FFmpeg**: Muss auf dem System installiert sein und der Pfad sollte bekannt sein.
+
+### Schritte
 
 1. **Repository klonen:**
 
@@ -35,7 +44,7 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
 
 2. **Erforderliche Python-Pakete installieren:**
 
-   Stelle sicher, dass du Python 3.8 oder höher installiert hast.
+   Stelle sicher, dass du alle benötigten Pakete installiert hast.
 
    ```bash
    pip install -r requirements.txt
@@ -43,7 +52,7 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
 
 3. **FFmpeg installieren:**
 
-   - **Windows:** Lade FFmpeg von [hier](https://ffmpeg.org/download.html) herunter und füge es deinem System-PATH hinzu.
+   - **Windows:** Lade FFmpeg von [ffmpeg.org](https://ffmpeg.org/download.html) herunter und füge es deinem System-PATH hinzu oder gib den Pfad in der `config.json` an.
    - **Linux:** Installiere es über den Paketmanager, z.B. `sudo apt-get install ffmpeg`.
    - **macOS:** Installiere es über Homebrew, z.B. `brew install ffmpeg`.
 
@@ -52,12 +61,13 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
 1. **Erstelle einen Discord-Bot-Account:**
 
    - Gehe zum [Discord Developer Portal](https://discord.com/developers/applications) und erstelle eine neue Anwendung.
-   - Erstelle einen Bot-Benutzer und kopiere den Bot-Token.
+   - Navigiere zu **"Bot"** und erstelle einen Bot-Benutzer.
+   - Kopiere den **Bot-Token**.
 
-2. **Spotify-API-Anmeldedaten einrichten (optional):**
+2. **Spotify-API-Anmeldedaten einrichten (optional, für Spotify-Unterstützung):**
 
    - Erstelle eine neue App im [Spotify Developer Dashboard](https://developer.spotify.com/dashboard/applications).
-   - Kopiere die Client-ID und das Client Secret.
+   - Kopiere die **Client-ID** und das **Client Secret**.
 
 3. **`config.json` bearbeiten:**
 
@@ -78,12 +88,17 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
    }
    ```
 
-   - Ersetze die Platzhalter durch deine tatsächlichen Tokens und IDs.
-   - Setze `ffmpeg_path` auf den Pfad, wo FFmpeg installiert ist, falls es nicht in deinem System-PATH ist.
+   - **`bot_token`**: Dein Discord-Bot-Token.
+   - **`spotify_client_id` & `spotify_client_secret`**: Deine Spotify-API-Anmeldedaten.
+   - **`language`**: Der Sprachcode für die gewünschte Sprache (`de`, `en`, `it`, `fr`, `en_GB`, `en_US`).
+   - **`command_prefix`**: Das Präfix für Bot-Befehle (z.B. `!`).
+   - **`default_volume`**: Standardlautstärke (1-100).
+   - **`ffmpeg_path`**: Pfad zur FFmpeg-Installation (`"ffmpeg"`, wenn es im System-PATH ist).
+   - **`embed_settings`**: Einstellungen für die Einbettungen (Embeds), z.B. der Footer-Text.
 
-4. **`lang.json` bearbeiten:**
+4. **`lang.json` sicherstellen:**
 
-   Stelle sicher, dass du eine `lang.json`-Datei in deinem Projektverzeichnis hast, die die notwendigen Lokalisierungsstrings enthält.
+   Stelle sicher, dass die `lang.json`-Datei im Projektverzeichnis vorhanden ist und die notwendigen Übersetzungen enthält.
 
 ## Verwendung
 
@@ -93,45 +108,74 @@ Starte den Bot mit:
 python music_bot.py
 ```
 
-Lade den Bot mit der OAuth2-URL aus dem Developer Portal auf deinen Discord-Server ein und stelle sicher, dass er die notwendigen Berechtigungen hat:
+### Den Bot zu deinem Server hinzufügen
 
-- Nachrichten senden
-- Links einbetten
-- Nachrichtenverlauf lesen
-- Reaktionen hinzufügen
-- In Sprachkanälen verbinden und sprechen
+1. Gehe zum Discord Developer Portal, wähle deine Anwendung und navigiere zu **"OAuth2" > "URL Generator"**.
+2. Wähle die Scopes **"bot"** und **"applications.commands"**.
+3. Unter **Bot Permissions** wähle die erforderlichen Berechtigungen:
+
+   - **General Permissions**:
+     - Lesen von Nachrichten/Verlauf
+     - Nachrichten senden
+     - Nachrichten verwalten
+     - Reaktionen hinzufügen
+   - **Voice Permissions**:
+     - Sprachkanäle betreten
+     - Sprachübertragung
+
+4. Kopiere die generierte URL und füge den Bot damit zu deinem Server hinzu.
 
 ## Befehle
 
 - **`!play <URL oder Suchbegriff>`**: Spielt einen Song oder eine Playlist von YouTube oder Spotify ab.
+  - Unterstützt YouTube- und Spotify-Links sowie direkte Suchbegriffe.
 - **`!pause`**: Pausiert die aktuelle Wiedergabe.
 - **`!resume`**: Setzt die Wiedergabe fort, falls pausiert.
 - **`!skip`**: Überspringt den aktuellen Song.
-- **`!stop`**: Stoppt die Wiedergabe und leert die Warteschlange.
+- **`!stop`**: Stoppt die Wiedergabe, leert die Warteschlange und trennt die Verbindung.
 - **`!volume <1-100>`**: Stellt die Wiedergabelautstärke ein.
 - **`!queue`**: Zeigt die aktuelle Song-Warteschlange an.
 - **`!help`**: Zeigt die Hilfenachricht mit allen verfügbaren Befehlen an.
 
-## Lokalisierung
+### Interaktive Steuerung über Reaktionen
 
-Der Bot unterstützt mehrere Sprachen. Die `lang.json`-Datei enthält alle vom Bot verwendeten Texte, organisiert nach Sprachcodes.
+- **⏮️**: Vorheriger Song
+- **⏯️**: Pause/Fortsetzen
+- **⏭️**: Nächster Song
+- **⏹️**: Stoppt die Wiedergabe und trennt die Verbindung
 
-So fügst du Übersetzungen hinzu oder bearbeitest sie:
+## Sprachunterstützung
 
-1. Öffne `lang.json`.
-2. Füge einen neuen Sprachabschnitt hinzu oder bearbeite die vorhandenen.
-3. Aktualisiere das Feld `"language"` in `config.json`, um den gewünschten Sprachcode zu verwenden (z.B. `"de"` für Deutsch).
+Der Bot unterstützt mehrere Sprachen. Die verfügbaren Sprachcodes sind:
 
-Beispielstruktur der `lang.json`:
+- **Deutsch**: `de`
+- **Englisch (US)**: `en_US`
+- **Englisch (GB)**: `en_GB`
+- **Italienisch**: `it`
+- **Französisch**: `fr`
+
+### Sprache einstellen
+
+Ändere das Feld `"language"` in deiner `config.json`, um die gewünschte Sprache zu verwenden:
 
 ```json
 {
-  "en": {
-    "no_voice_channel": "You need to be in a voice channel to use this command!",
-    // ... weitere Schlüssel
-  },
-  "de": {
-    "no_voice_channel": "Du musst in einem Sprachkanal sein, um diesen Befehl zu verwenden!",
+  "language": "de"
+}
+```
+
+### Eigene Übersetzungen hinzufügen
+
+1. Öffne die `lang.json`-Datei.
+2. Füge einen neuen Sprachabschnitt mit dem entsprechenden Sprachcode hinzu.
+3. Übersetze die Texte oder passe sie an deine Bedürfnisse an.
+
+Beispiel:
+
+```json
+{
+  "es": {
+    "no_voice_channel": "¡Debes estar en un canal de voz para que el bot se una!",
     // ... weitere Schlüssel
   }
 }
@@ -141,11 +185,15 @@ Beispielstruktur der `lang.json`:
 
 Der Bot benötigt folgende Python-Pakete:
 
-- [discord.py](https://github.com/Rapptz/discord.py)
-- [yt-dlp](https://github.com/yt-dlp/yt-dlp)
-- [spotipy](https://github.com/plamere/spotipy)
+- **discord.py**
+- **yt-dlp**
+- **spotipy** (für Spotify-Unterstützung)
 
-Diese sind in der `requirements.txt` aufgeführt.
+Installiere alle Abhängigkeiten mit:
+
+```bash
+pip install -r requirements.txt
+```
 
 **Inhalt der `requirements.txt`:**
 
@@ -155,41 +203,49 @@ yt-dlp
 spotipy
 ```
 
-Installiere alle Python-Abhängigkeiten mit:
-
-```bash
-pip install -r requirements.txt
-```
-
 ## Mitwirken
 
 Beiträge sind willkommen! Bitte folge diesen Schritten:
 
-1. Forke das Repository.
-2. Erstelle einen neuen Branch:
+1. **Repository forken:**
+
+   Klicke auf **"Fork"**, um eine Kopie des Repositories in deinem GitHub-Konto zu erstellen.
+
+2. **Neuen Branch erstellen:**
 
    ```bash
-   git checkout -b feature/dein-feature-name
+   git checkout -b feature/mein-neues-feature
    ```
 
-3. Nimm deine Änderungen vor und committe sie:
+3. **Änderungen vornehmen und committen:**
 
    ```bash
-   git commit -m "Füge deine Nachricht hier ein"
+   git commit -m "Füge mein neues Feature hinzu"
    ```
 
-4. Pushe den Branch:
+4. **Branch pushen:**
 
    ```bash
-   git push origin feature/dein-feature-name
+   git push origin feature/mein-neues-feature
    ```
 
-5. Öffne einen Pull Request und beschreibe deine Änderungen.
+5. **Pull Request öffnen:**
+
+   Gehe zu deinem Repository auf GitHub und öffne einen neuen Pull Request.
 
 ## Lizenz
 
-Dieses Projekt ist unter der MIT-Lizenz lizenziert. Siehe die [LICENSE](LICENSE)-Datei für Details.
+Dieses Projekt ist unter der [MIT-Lizenz](LICENSE) lizenziert. Du darfst den Code frei verwenden, modifizieren und verteilen.
 
 ---
 
-Viel Spaß mit der Musik! Wenn du Probleme hast oder Vorschläge für neue Features, öffne gerne ein Issue oder einen Pull Request.
+**Viel Spaß mit der Musik!** Wenn du Probleme hast oder Vorschläge für neue Features, öffne gerne ein Issue oder einen Pull Request.
+
+
+---
+
+### Hinweis
+
+Dieser Bot wurde mit Fokus auf Benutzerfreundlichkeit und Erweiterbarkeit entwickelt. Bei der Implementierung wurden bewährte Praktiken berücksichtigt, um einen stabilen und zuverlässigen Musikbot für deine Discord-Community bereitzustellen.
+
+**Vielen Dank für die Nutzung dieses Bots!**

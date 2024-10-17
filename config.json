@@ -3,7 +3,7 @@
     "command_prefix": "?",
     "default_volume": 50,
     "ffmpeg_path": "C:/ffmpeg/bin/ffmpeg.exe",
-    "language": "de",
+    "language": "en",
     "spotify_client_id": "a8e0364e08714eb5ad39564a7d17ab02",
     "spotify_client_secret": "ce68f2755f70443d8ddd0b87e2d1e394",
     "embed_settings": {

@@ -77,6 +77,7 @@ def load_volume():
 # Globale Variablen
 volume = load_volume()  # Lautstärke laden
 song_queue = deque()  # Warteschlange für Songs
+played_songs = deque()  # Historie der gespielten Songs
 current_song = None  # Aktueller Song
 current_title = None  # Aktueller Songtitel
 current_thumbnail = None  # Aktuelles Thumbnail
@@ -299,9 +300,13 @@ async def play(ctx, *, url: str):
         await play_next_song(ctx.voice_client)
 
 async def play_next_song(voice_client):
+    global now_playing_message, played_songs  # Hier die globalen Variablen deklarieren
     if song_queue:
-        global current_song, current_title, current_thumbnail, now_playing_message
+        global current_song, current_title, current_thumbnail
         ctx, url = song_queue.popleft()
+        # Aktuellen Song zur Historie hinzufügen
+        if current_song is not None:
+            played_songs.append((ctx, current_song))
         current_song = url
         ydl_opts = {
             'format': 'bestaudio/best',
@@ -337,6 +342,50 @@ async def play_next_song(voice_client):
         if voice_client and voice_client.is_connected():
             await voice_client.disconnect()
 
+async def play_previous_song(voice_client):
+    global now_playing_message, played_songs, song_queue  # Globale Variablen deklarieren
+    if played_songs:
+        global current_song, current_title, current_thumbnail
+        # Aktuellen Song zur Warteschlange hinzufügen
+        if current_song is not None:
+            song_queue.appendleft((None, current_song))
+        # Vorherigen Song aus der Historie holen
+        ctx, url = played_songs.pop()
+        current_song = url
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'noplaylist': True,
+            'quiet': True,
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '320',
+            }],
+        }
+
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                current_thumbnail = info.get('thumbnail', '')
+                url2 = info['url']
+                current_title = info.get('title', 'Unbekannter Titel')
+                duration = info.get('duration', 0)
+
+            ffmpeg_options = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                'options': '-vn'
+            }
+
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(url2, executable=config['ffmpeg_path'], **ffmpeg_options), volume=volume / 100)
+            voice_client.stop()  # Stoppe aktuellen Song
+            voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(on_finished(ctx), bot.loop))
+            await send_now_playing_embed(ctx, current_title, duration, current_thumbnail)
+        except Exception as e:
+            logging.error(f"Error playing previous song: {e}")
+            await ctx.send(f"{lang['playback_error']} {e}")
+    else:
+        await voice_client.guild.text_channels[0].send(lang['no_previous_song'])
+
 async def on_finished(ctx):
     if song_queue:
         await play_next_song(ctx.voice_client)
@@ -346,7 +395,7 @@ async def on_finished(ctx):
 
 # Fortschrittsbalken mit modernem Design
 async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
-    global now_playing_message
+    global now_playing_message  # Hier die globale Variable deklarieren
     embed = discord.Embed(
         title="Jetzt spielt 🎶",
         description=f"[**{title}**]({current_song})",
@@ -364,6 +413,7 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
             pass  # Nachricht bereits gelöscht
 
     now_playing_message = await ctx.send(embed=embed)
+    await now_playing_message.add_reaction("⏮️")  # Vorheriger Song
     await now_playing_message.add_reaction("⏭️")  # Nächster Song
     await now_playing_message.add_reaction("⏯️")  # Pause/Fortsetzen
     await now_playing_message.add_reaction("⏹️")  # Stop
@@ -404,7 +454,7 @@ def create_progress_bar(progress):
 # Reaktionen auf Steuerungen
 @bot.event
 async def on_raw_reaction_add(payload):
-    global now_playing_message
+    global now_playing_message  # Hier die globale Variable deklarieren
     if payload.user_id == bot.user.id:
         return
 
@@ -422,7 +472,10 @@ async def on_raw_reaction_add(payload):
     emoji = str(payload.emoji)
     voice_client = guild.voice_client
 
-    if emoji == "⏭️":  # Nächster Song
+    if emoji == "⏮️":  # Vorheriger Song
+        if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
+            await play_previous_song(voice_client)
+    elif emoji == "⏭️":  # Nächster Song
         if voice_client and voice_client.is_playing():
             voice_client.stop()
     elif emoji == "⏯️":  # Pause oder Fortsetzen
@@ -492,9 +545,10 @@ async def skip_cmd(ctx):
 # Stop Command
 @bot.command(name='stop', help='Stoppt die Wiedergabe und leert die Warteschlange.')
 async def stop_cmd(ctx):
-    global now_playing_message
+    global now_playing_message  # Hier die globale Variable deklarieren
     if ctx.voice_client:
         song_queue.clear()
+        played_songs.clear()  # Historie leeren
         ctx.voice_client.stop()
         if ctx.voice_client.is_connected():
             await ctx.voice_client.disconnect()
