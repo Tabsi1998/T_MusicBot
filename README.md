@@ -1,3 +1,7 @@
+Natürlich! Du möchtest deine README-Datei so aktualisieren, dass sie einen Link zu deiner `Ubuntu-Server_Install.md` enthält. Hier ist die aktualisierte README mit dem Link eingefügt:
+
+---
+
 # Discord Music Bot 🎶
 
 Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und Spotify abspielen kann. Er unterstützt mehrere Sprachen, interaktive Steuerungen direkt in Discord und bietet ein modernes, benutzerfreundliches Design.
@@ -27,6 +31,8 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
 - [Lizenz](#lizenz)
 
 ## Installation
+
+Für eine detaillierte Anleitung zur Installation auf einem Ubuntu-Server, siehe [Ubuntu-Server_Install.md](Ubuntu-Server_Install.md).
 
 ### Voraussetzungen
 
@@ -84,14 +90,54 @@ Ein funktionsreicher Discord-Musikbot, der Songs und Playlists von YouTube und S
      "ffmpeg_path": "ffmpeg",
      "embed_settings": {
        "footer": "Viel Spaß mit der Musik!"
+     },
+     "commands": {
+       "play": {
+         "name": "play",
+         "aliases": ["p", "spielen", "abspielen"]
+       },
+       "pause": {
+         "name": "pause",
+         "aliases": ["pausieren"]
+       },
+       "resume": {
+         "name": "resume",
+         "aliases": ["continue", "fortsetzen"]
+       },
+       "stop": {
+         "name": "stop",
+         "aliases": ["s", "halt", "anhalten"]
+       },
+       "skip": {
+         "name": "skip",
+         "aliases": ["next", "überspringen", "weiter"]
+       },
+       "volume": {
+         "name": "volume",
+         "aliases": ["vol", "lautstärke"]
+       },
+       "queue": {
+         "name": "queue",
+         "aliases": ["q", "warteschlange"]
+       },
+       "help": {
+         "name": "help",
+         "aliases": ["h", "hilfe"]
+       },
+       "loop": {
+         "name": "loop",
+         "aliases": ["repeat", "wiederholen"]
+       }
      }
    }
    ```
 
+   **Hinweise:**
+
    - **`bot_token`**: Dein Discord-Bot-Token.
    - **`spotify_client_id` & `spotify_client_secret`**: Deine Spotify-API-Anmeldedaten.
-   - **`language`**: Der Sprachcode für die gewünschte Sprache (`de`, `en`, `it`, `fr`, `en_GB`, `en_US`).
-   - **`command_prefix`**: Das Präfix für Bot-Befehle (z.B. `!`).
+   - **`language`**: Der Sprachcode für die gewünschte Sprache (`de`, `en`, `it`, `fr`).
+   - **`command_prefix`**: Das Präfix für Bot-Befehle (z.B. `?`).
    - **`default_volume`**: Standardlautstärke (1-100).
    - **`ffmpeg_path`**: Pfad zur FFmpeg-Installation (`"ffmpeg"`, wenn es im System-PATH ist).
    - **`embed_settings`**: Einstellungen für die Einbettungen (Embeds), z.B. der Footer-Text.
@@ -149,8 +195,7 @@ python music_bot.py
 Der Bot unterstützt mehrere Sprachen. Die verfügbaren Sprachcodes sind:
 
 - **Deutsch**: `de`
-- **Englisch (US)**: `en_US`
-- **Englisch (GB)**: `en_GB`
+- **Englisch**: `en`
 - **Italienisch**: `it`
 - **Französisch**: `fr`
 
@@ -187,7 +232,8 @@ Der Bot benötigt folgende Python-Pakete:
 
 - **discord.py**
 - **yt-dlp**
-- **spotipy** (für Spotify-Unterstützung)
+- **spotipy**
+- **PyNaCl**
 
 Installiere alle Abhängigkeiten mit:
 
@@ -201,6 +247,7 @@ pip install -r requirements.txt
 discord.py
 yt-dlp
 spotipy
+PyNaCl
 ```
 
 ## Mitwirken
@@ -233,19 +280,36 @@ Beiträge sind willkommen! Bitte folge diesen Schritten:
 
    Gehe zu deinem Repository auf GitHub und öffne einen neuen Pull Request.
 
-## Lizenz
+---
 
-Dieses Projekt ist unter der [MIT-Lizenz](LICENSE) lizenziert. Du darfst den Code frei verwenden, modifizieren und verteilen.
+**Viel Spaß mit der Musik!** Wenn du Probleme hast oder Vorschläge für neue Features hast, öffne gerne ein Issue oder einen Pull Request.
 
 ---
 
-**Viel Spaß mit der Musik!** Wenn du Probleme hast oder Vorschläge für neue Features, öffne gerne ein Issue oder einen Pull Request.
-
-
----
-
-### Hinweis
+**Hinweis**
 
 Dieser Bot wurde mit Fokus auf Benutzerfreundlichkeit und Erweiterbarkeit entwickelt. Bei der Implementierung wurden bewährte Praktiken berücksichtigt, um einen stabilen und zuverlässigen Musikbot für deine Discord-Community bereitzustellen.
 
 **Vielen Dank für die Nutzung dieses Bots!**
+
+---
+
+Jetzt enthält deine README-Datei einen Link zu deiner `Ubuntu-Server_Install.md` im Abschnitt **Installation**. Stelle sicher, dass die `Ubuntu-Server_Install.md` in deinem Repository vorhanden ist und die detaillierten Anweisungen zur Installation auf einem Ubuntu-Server enthält.
+
+Wenn du möchtest, kannst du auch im Inhaltsverzeichnis einen direkten Link zur Ubuntu-Server-Installation hinzufügen:
+
+## Inhaltsverzeichnis
+
+- [Installation](#installation)
+  - [Ubuntu Server Installation](Ubuntu-Server_Install.md)
+- [Konfiguration](#konfiguration)
+- [Verwendung](#verwendung)
+- [Befehle](#befehle)
+- [Sprachunterstützung](#sprachunterstützung)
+- [Abhängigkeiten](#abhängigkeiten)
+- [Mitwirken](#mitwirken)
+- [Lizenz](#lizenz)
+
+Damit ist der Link auch im Inhaltsverzeichnis sichtbar und leicht zugänglich.
+
+Falls du weitere Unterstützung benötigst oder Fragen hast, stehe ich gerne zur Verfügung!
