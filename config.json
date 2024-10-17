@@ -1,13 +1,51 @@
 {
-    "bot_token": "BOT_TOKEN",
+    "bot_token": "MTIyMTc1ODQxOTE1ODE3MTY4OA.GmqCKq.bA-n9Ee2vLwbSzAS6iPs1lczibqioCzEMVRMLE",
     "command_prefix": "?",
     "default_volume": 50,
     "ffmpeg_path": "C:/ffmpeg/bin/ffmpeg.exe",
     "language": "en",
-    "spotify_client_id": "SPOTIFY_CLIENT_ID",
-    "spotify_client_secret": "SPOTIFY_CLIENT_SECRET",
+    "spotify_client_id": "DEINE_SPOTIFY_CLIENT_ID",
+    "spotify_client_secret": "DEIN_SPOTIFY_CLIENT_SECRET",
     "embed_settings": {
         "color": "0x00FF00",
         "footer": "🎶 Genieße die Musik!"
+    },
+    "commands": {
+  "play": {
+    "name": "play",
+    "aliases": ["p", "spielen", "abspielen"]
+  },
+  "pause": {
+    "name": "pause",
+    "aliases": ["pausieren"]
+  },
+  "resume": {
+    "name": "resume",
+    "aliases": ["continue", "fortsetzen"]
+  },
+  "stop": {
+    "name": "stop",
+    "aliases": ["s", "halt", "anhalten"]
+  },
+  "skip": {
+    "name": "skip",
+    "aliases": ["next", "überspringen", "weiter"]
+  },
+  "volume": {
+    "name": "volume",
+    "aliases": ["vol", "lautstärke"]
+  },
+  "queue": {
+    "name": "queue",
+    "aliases": ["q", "warteschlange"]
+  },
+  "help": {
+    "name": "help",
+    "aliases": ["h", "hilfe"]
+  },
+  "loop": {
+    "name": "loop",
+    "aliases": ["repeat", "wiederholen"]
+  }
+      }
     }
-}
