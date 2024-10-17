@@ -57,8 +57,25 @@ intents.reactions = True  # Erforderlich für Reaktionen
 
 bot = commands.Bot(command_prefix=config['command_prefix'], intents=intents, help_command=None)
 
+# Funktionen zum Speichern und Laden der Lautstärke
+def save_volume(volume):
+    try:
+        with open('volume.json', 'w', encoding='utf-8') as f:
+            json.dump({'volume': volume}, f)
+    except Exception as e:
+        logging.error(f"Error saving volume.json: {e}")
+
+def load_volume():
+    try:
+        with open('volume.json', 'r', encoding='utf-8') as f:
+            data = json.load(f)
+            return data.get('volume', config['default_volume'])
+    except Exception as e:
+        logging.error(f"Error loading volume.json: {e}")
+        return config['default_volume']
+
 # Globale Variablen
-volume = config['default_volume']  # Standardlautstärke aus der Konfiguration
+volume = load_volume()  # Lautstärke laden
 song_queue = deque()  # Warteschlange für Songs
 current_song = None  # Aktueller Song
 current_title = None  # Aktueller Songtitel
@@ -341,7 +358,10 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     embed.set_footer(text=config['embed_settings']['footer'])
 
     if now_playing_message is not None:
-        await now_playing_message.delete()
+        try:
+            await now_playing_message.delete()
+        except discord.errors.NotFound:
+            pass  # Nachricht bereits gelöscht
 
     now_playing_message = await ctx.send(embed=embed)
     await now_playing_message.add_reaction("⏭️")  # Nächster Song
@@ -384,6 +404,7 @@ def create_progress_bar(progress):
 # Reaktionen auf Steuerungen
 @bot.event
 async def on_raw_reaction_add(payload):
+    global now_playing_message
     if payload.user_id == bot.user.id:
         return
 
@@ -414,12 +435,20 @@ async def on_raw_reaction_add(payload):
             song_queue.clear()
             voice_client.stop()
             await voice_client.disconnect()
-            await now_playing_message.delete()
+            if now_playing_message:
+                try:
+                    await now_playing_message.delete()
+                except discord.errors.NotFound:
+                    pass  # Nachricht bereits gelöscht
+                now_playing_message = None
             await guild.text_channels[0].send(lang['playback_stopped_emoji'])
 
     # Entferne die Reaktion des Benutzers
     channel = bot.get_channel(payload.channel_id)
-    message = await channel.fetch_message(payload.message_id)
+    try:
+        message = await channel.fetch_message(payload.message_id)
+    except discord.errors.NotFound:
+        return  # Nachricht nicht gefunden, nichts tun
     user = guild.get_member(payload.user_id)
     await message.remove_reaction(payload.emoji, user)
 
@@ -432,6 +461,7 @@ async def volume_cmd(ctx, value: int = None):
         return
     if ctx.voice_client and 1 <= value <= 100:
         volume = value
+        save_volume(volume)  # Lautstärke speichern
         if ctx.voice_client.source:
             ctx.voice_client.source.volume = volume / 100
         await ctx.send(lang['volume_set'].format(volume=volume))
@@ -470,7 +500,10 @@ async def stop_cmd(ctx):
             await ctx.voice_client.disconnect()
         await ctx.send(lang['song_finished'])
         if now_playing_message:
-            await now_playing_message.delete()
+            try:
+                await now_playing_message.delete()
+            except discord.errors.NotFound:
+                pass  # Nachricht bereits gelöscht
             now_playing_message = None
 
 # Queue Command
