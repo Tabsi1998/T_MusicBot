@@ -101,12 +101,16 @@ async def get_spotify_track_info(url):
             track_info = sp.track(url)
             track_name = track_info['name']
             artist_name = track_info['artists'][0]['name']
+            album_art = track_info['album']['images'][0]['url']
+            duration_ms = track_info['duration_ms']
+            duration_sec = duration_ms // 1000
             query = f"{artist_name} {track_name}"
-            return query
+            return query, track_name, artist_name, album_art, duration_sec
         except Exception as e:
             logging.error(f"Error retrieving Spotify track info: {e}")
-            return None
+            return None, None, None, None, None
     return await asyncio.to_thread(fetch_track_info)
+
 
 # Spotify-Playlist-Tracks abrufen (asynchron)
 async def get_spotify_playlist_tracks(url):
@@ -271,12 +275,13 @@ async def play(ctx, *, url: str):
 
     # Spotify Track
     elif 'open.spotify.com/track' in url:
-        query = await get_spotify_track_info(url)
+        query, track_name, artist_name, album_art, duration = await get_spotify_track_info(url)
         if query:
             youtube_url = await get_youtube_url(query)
             if youtube_url:
                 song_queue.append((ctx, youtube_url))
-                await ctx.send(lang['song_added_to_queue'].format(username=ctx.author.name))
+                # Zeige den Song so an, als wäre er direkt von Spotify
+                await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
             else:
                 await ctx.send(lang['playback_error'])
                 return

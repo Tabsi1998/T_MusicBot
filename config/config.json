@@ -4,8 +4,8 @@
     "default_volume": 10,
     "ffmpeg_path": "C:/ffmpeg/bin/ffmpeg.exe",
     "language": "de",
-    "spotify_client_id": "DEINE_SPOTIFY_CLIENT_ID",
-    "spotify_client_secret": "DEIN_SPOTIFY_CLIENT_SECRET",
+    "spotify_client_id": "a8e0364e08714eb5ad39564a7d17ab02",
+    "spotify_client_secret": "ce68f2755f70443d8ddd0b87e2d1e394",
     "embed_settings": {
         "color": "0x00FF00",
         "footer": "🎶 Genieße die Musik!"
