@@ -502,7 +502,7 @@ def create_progress_bar(progress):
     filled_length = int(progress * progress_bar_length)
     bar = '▰' * filled_length + '▱' * (progress_bar_length - filled_length)
     percentage = int(progress * 100)
-    return f"`{bar}` {percentage}%"
+    return f"{bar} {percentage}%"
 
 # Reaktionen auf Steuerungen
 @bot.event
@@ -632,13 +632,59 @@ queue_name, queue_aliases = get_command_info('queue')
 
 @bot.command(name=queue_name, aliases=queue_aliases, help=lang['queue_help'])
 async def queue_cmd(ctx):
+    print("Queue-Befehl wurde aufgerufen!")  # Debug-Ausgabe
     if song_queue:
         embed = discord.Embed(title="🎶 Warteschlange", color=discord.Color.purple())
+
+        # Sende eine vorläufige Nachricht, die aktualisiert wird, während die Infos geladen werden
+        queue_message = await ctx.send(embed=embed)
+
+        # Iteriere über die Warteschlange und lade Song-Informationen nacheinander
         for idx, (ctx_item, url) in enumerate(song_queue):
-            embed.add_field(name=f"{idx + 1}.", value=f"[Link]({url})", inline=False)
-        await ctx.send(embed=embed)
+            print(f"Verarbeite Song {idx + 1}: {url}")  # Debug-Ausgabe
+
+            # Song-Informationen abrufen
+            info = await get_song_info_async(url)
+            if info:
+                title = info.get('title', 'Unbekannter Titel')
+                duration = info.get('duration', 0)
+                minutes, seconds = divmod(duration, 60)
+                # Feld zur Warteschlange hinzufügen
+                embed.add_field(name=f"{idx + 1}. {title} ({minutes}:{seconds:02d})", value=f"[Link]({url})", inline=False)
+            else:
+                embed.add_field(name=f"{idx + 1}.", value=f"[Link]({url})", inline=False)
+
+            # Aktualisiere die Nachricht nach jedem Eintrag
+            try:
+                await queue_message.edit(embed=embed)
+            except Exception as e:
+                logging.error(f"Error updating queue message: {e}")
+
+            # Eine kleine Pause einlegen, um den Bot nicht zu überlasten
+            await asyncio.sleep(0.5)
+
     else:
+        print("Die Warteschlange ist leer.")  # Debug-Ausgabe
         await ctx.send(lang['queue_empty'])
+
+# Asynchrone Funktion, um Song-Informationen abzurufen
+async def get_song_info_async(url):
+    def fetch_song_info():
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'noplaylist': True,
+            'quiet': True
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                return info
+        except Exception as e:
+            logging.error(f"Error fetching song info: {e}")
+            return None
+
+    return await asyncio.to_thread(fetch_song_info)
+
 
 # Hilfe Command
 help_name, help_aliases = get_command_info('help')

@@ -1,8 +1,8 @@
 {
     "bot_token": "MTIyMTc1ODQxOTE1ODE3MTY4OA.GmqCKq.bA-n9Ee2vLwbSzAS6iPs1lczibqioCzEMVRMLE",
     "command_prefix": "?",
-    "default_volume": 2,
-    "ffmpeg_path": "D:/ffmpeg/bin/ffmpeg.exe",
+    "default_volume": 10,
+    "ffmpeg_path": "C:/ffmpeg/bin/ffmpeg.exe",
     "language": "de",
     "spotify_client_id": "DEINE_SPOTIFY_CLIENT_ID",
     "spotify_client_secret": "DEIN_SPOTIFY_CLIENT_SECRET",
