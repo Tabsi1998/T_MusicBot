@@ -94,7 +94,7 @@ is_looping = False
 # URL-Cache für get_youtube_url
 url_cache = {}
 
-# Spotify-Songinformationen abrufen (asynchron)
+#Spotify-Songinformationen abrufen (asynchron)
 async def get_spotify_track_info(url):
     def fetch_track_info():
         try:
@@ -104,12 +104,13 @@ async def get_spotify_track_info(url):
             album_art = track_info['album']['images'][0]['url']
             duration_ms = track_info['duration_ms']
             duration_sec = duration_ms // 1000
-            query = f"{artist_name} {track_name}"
-            return query, track_name, artist_name, album_art, duration_sec
+            preview_url = track_info.get('preview_url')
+            return None, track_name, artist_name, album_art, duration_sec, preview_url
         except Exception as e:
             logging.error(f"Error retrieving Spotify track info: {e}")
-            return None, None, None, None, None
+            return None, None, None, None, None, None
     return await asyncio.to_thread(fetch_track_info)
+
 
 
 # Spotify-Playlist-Tracks abrufen (asynchron)
@@ -122,12 +123,9 @@ async def get_spotify_playlist_tracks(url):
             while results:
                 for item in results['items']:
                     track = item['track']
-                    track_name = track['name']
-                    artist_name = track['artists'][0]['name']
-                    query = f"{artist_name} {track_name}"
-                    youtube_url = get_youtube_url_sync(query)
-                    if youtube_url:
-                        tracks.append(youtube_url)
+                    preview_url = track.get('preview_url')
+                    if preview_url:
+                        tracks.append(preview_url)
                 if results['next']:
                     results = sp.next(results)
                 else:
@@ -138,6 +136,7 @@ async def get_spotify_playlist_tracks(url):
             return None
     return await asyncio.to_thread(fetch_tracks)
 
+
 # Ersten Track einer Spotify-Playlist abrufen (asynchron)
 async def get_first_spotify_track(url):
     def fetch_first_track():
@@ -146,15 +145,13 @@ async def get_first_spotify_track(url):
             results = sp.playlist_items(playlist_id, limit=1)
             item = results['items'][0]
             track = item['track']
-            track_name = track['name']
-            artist_name = track['artists'][0]['name']
-            query = f"{artist_name} {track_name}"
-            youtube_url = get_youtube_url_sync(query)
-            return youtube_url
+            preview_url = track.get('preview_url')
+            return preview_url
         except Exception as e:
             logging.error(f"Error retrieving first track of Spotify playlist: {e}")
             return None
     return await asyncio.to_thread(fetch_first_track)
+
 
 # YouTube-Playlist-URLs abrufen (asynchron)
 async def get_youtube_playlist_urls(url):
@@ -275,16 +272,28 @@ async def play(ctx, *, url: str):
 
     # Spotify Track
     elif 'open.spotify.com/track' in url:
-        query, track_name, artist_name, album_art, duration = await get_spotify_track_info(url)
-        if query:
-            youtube_url = await get_youtube_url(query)
-            if youtube_url:
-                song_queue.append((ctx, youtube_url))
-                # Zeige den Song so an, als wäre er direkt von Spotify
-                await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
-            else:
-                await ctx.send(lang['playback_error'])
-                return
+        query, track_name, artist_name, album_art, duration, preview_url = await get_spotify_track_info(url)
+        if preview_url:
+            # Verbinde mit Voice-Channel, falls nicht bereits verbunden
+            if ctx.voice_client is None:
+                await ctx.author.voice.channel.connect()
+
+            # Optionen für FFmpeg setzen
+            ffmpeg_options = {
+                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+                'options': '-vn'
+            }
+            
+            # Audioquelle direkt über preview_url abspielen
+            source = discord.PCMVolumeTransformer(
+                discord.FFmpegPCMAudio(preview_url, executable=config['ffmpeg_path'], **ffmpeg_options),
+                volume=volume / 100
+            )
+            
+            ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(on_finished(ctx), bot.loop))
+            
+            # Embed für den Song anzeigen
+            await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
         else:
             await ctx.send(lang['playback_error'])
             return
@@ -328,6 +337,7 @@ async def play(ctx, *, url: str):
 
     if not ctx.voice_client.is_playing():
         await play_next_song(ctx.voice_client)
+
 
 async def play_next_song(voice_client):
     global now_playing_message, played_songs
