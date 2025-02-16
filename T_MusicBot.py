@@ -1,5 +1,6 @@
 import discord
 from discord.ext import commands
+from discord.ext import tasks
 import yt_dlp
 import asyncio
 import time
@@ -90,6 +91,9 @@ current_title = None
 current_thumbnail = None
 now_playing_message = None
 is_looping = False
+progress_start_time = 0
+progress_duration = 0
+progress_last_progress = -1
 
 # URL-Cache für get_youtube_url
 url_cache = {}
@@ -218,6 +222,48 @@ def get_youtube_url_sync(query):
                 logging.error(f"Error retrieving YouTube link: {e}")
                 continue
     return None
+
+@tasks.loop(seconds=5)
+async def update_progress_loop(ctx):
+    global now_playing_message, progress_start_time, progress_duration, progress_last_progress
+
+    # Beenden, falls Voice-Client nicht mehr verbunden oder nicht aktiv ist
+    if ctx.voice_client is None or not ctx.voice_client.is_connected():
+        update_progress_loop.cancel()
+        return
+    if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
+        update_progress_loop.cancel()
+        return
+
+    elapsed = time.time() - progress_start_time
+    progress = min(elapsed / progress_duration, 1.0)
+    minutes, seconds = divmod(int(elapsed), 60)
+    total_minutes, total_seconds = divmod(int(progress_duration), 60)
+    progress_bar = create_progress_bar(progress)
+
+    # Aktualisiere nur, wenn sich der Fortschritt signifikant geändert hat
+    new_progress_level = int(progress * 100) // 5
+    if new_progress_level != progress_last_progress:
+        progress_last_progress = new_progress_level
+        embed = now_playing_message.embeds[0]
+        embed.clear_fields()
+        embed.add_field(name="Dauer", value=f"{minutes}:{seconds:02d} / {total_minutes}:{total_seconds:02d}", inline=True)
+        embed.add_field(name="Fortschritt", value=progress_bar, inline=False)
+        if ctx.voice_client.is_paused():
+            embed.title = "⏸️ Jetzt spielt 🎶"
+        else:
+            embed.title = "Jetzt spielt 🎶"
+
+        try:
+            await now_playing_message.edit(embed=embed)
+        except discord.errors.NotFound:
+            update_progress_loop.cancel()
+            return
+
+    # Beende die Loop, wenn der Song zu Ende ist
+    if elapsed >= progress_duration:
+        update_progress_loop.cancel()
+
 
 @bot.event
 async def on_ready():
@@ -480,37 +526,12 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     await now_playing_message.add_reaction("⏯️")
     await now_playing_message.add_reaction("⏹️")
 
-    start_time = time.time()
-    last_progress = -1
-    while True:
-        if ctx.voice_client is None or not ctx.voice_client.is_connected():
-            break
-        if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
-            break
-
-        elapsed = time.time() - start_time
-        progress = min(elapsed / duration, 1) if duration > 0 else 0
-        minutes, seconds = divmod(int(elapsed), 60)
-        total_minutes, total_seconds = divmod(int(duration), 60)
-        progress_bar = create_progress_bar(progress)
-
-        # Aktualisiere das Embed nur bei signifikanten Änderungen
-        if int(progress * 100) // 5 != last_progress:
-            last_progress = int(progress * 100) // 5
-            embed.clear_fields()
-            embed.add_field(name="Dauer", value=f"{minutes}:{seconds:02d} / {total_minutes}:{total_seconds:02d}", inline=True)
-            embed.add_field(name="Fortschritt", value=progress_bar, inline=False)
-            if ctx.voice_client.is_paused():
-                embed.title = "⏸️ Jetzt spielt 🎶"
-            else:
-                embed.title = "Jetzt spielt 🎶"
-
-            try:
-                await now_playing_message.edit(embed=embed)
-            except discord.errors.NotFound:
-                break
-
-        await asyncio.sleep(5)
+  # Setze Startzeit, Dauer und initialen Fortschrittswert
+    global progress_start_time, progress_duration, progress_last_progress
+    progress_start_time = time.time()
+    progress_duration = duration
+    progress_last_progress = -1
+    update_progress_loop.start(ctx)
 
 def create_progress_bar(progress):
     progress_bar_length = 20
