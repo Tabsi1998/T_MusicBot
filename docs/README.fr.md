@@ -40,8 +40,8 @@ Pour un guide d'installation détaillé sur un serveur Ubuntu, consultez [Ubuntu
 1. **Cloner le Répertoire :**
 
    ```bash
-   git clone https://github.com/votreutilisateur/votre-nom-de-repo.git
-   cd votre-nom-de-repo
+   git clone https://github.com/Tabsi1998/T_MusicBot.git
+   cd T_MusicBot
    ```
 
 2. **Installer les Paquets Python Nécessaires :**
