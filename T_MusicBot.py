@@ -56,7 +56,7 @@ intents.guilds = True
 intents.voice_states = True
 intents.reactions = True
 
-# Befehlsinformationen laden
+# Befehle aus der Config laden
 commands_config = config.get('commands', {})
 def get_command_info(command_key):
     command_info = commands_config.get(command_key, {})
@@ -64,10 +64,9 @@ def get_command_info(command_key):
     aliases = command_info.get('aliases', [])
     return name, aliases
 
-# Bot erstellen
 bot = commands.Bot(command_prefix=config['command_prefix'], intents=intents, help_command=None)
 
-# Globaler Check: Befehle nur im Textkanal des Voice-Chats erlauben
+# Globaler Check: Befehle nur im Textkanal des Voice-Channels erlauben
 def voice_text_channel_only():
     async def predicate(ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
@@ -80,7 +79,7 @@ def voice_text_channel_only():
     return commands.check(predicate)
 bot.add_check(voice_text_channel_only())
 
-# Funktionen zum Speichern und Laden der Lautstärke
+# Funktionen zum Speichern der Lautstärke
 def save_volume(volume):
     global config
     try:
@@ -104,7 +103,7 @@ progress_duration = 0
 progress_last_progress = -1
 url_cache = {}
 
-### Spotify- und YouTube-Hilfsfunktionen ###
+### ASYNCHRONE HILFSFUNKTIONEN ###
 
 async def get_spotify_track_info(url):
     def fetch_track_info():
@@ -114,7 +113,7 @@ async def get_spotify_track_info(url):
             artist_name = info['artists'][0]['name']
             album_art = info['album']['images'][0]['url']
             duration_sec = info['duration_ms'] // 1000
-            # Wir ignorieren den von Spotify gelieferten Preview-Link (DRM-Problem)
+            # Wir ignorieren den von Spotify gelieferten Preview-Link (DRM-Problematik)
             preview_url = info.get('preview_url')
             return None, track_name, artist_name, album_art, duration_sec, preview_url
         except Exception as e:
@@ -171,25 +170,26 @@ def get_youtube_url_sync(query):
         'no_warnings': True,
         'ignoreerrors': True,
     }
-    search_terms = [f"{query} lyrics", f"{query} audio", f"{query}"]
+    # Mehrere Suchbegriffe ausprobieren, um DRM-geschützte Ergebnisse zu vermeiden
+    search_queries = [f"{query} official audio", f"{query} lyrics", f"{query} audio", f"{query} cover"]
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        for term in search_terms:
+        for sq in search_queries:
             try:
-                info = ydl.extract_info(f"ytsearch:{term}", download=False)
+                info = ydl.extract_info(f"ytsearch:{sq}", download=False)
                 for entry in info.get('entries', []):
                     video_url = entry.get('webpage_url')
                     if not video_url:
                         continue
                     try:
                         candidate = ydl.extract_info(video_url, download=False)
-                        if candidate:
+                        if candidate and "DRM" not in str(candidate).upper():
                             url_cache[query] = video_url
                             return video_url
                     except yt_dlp.utils.DownloadError as e:
                         if "DRM" in str(e):
                             continue
             except Exception as e:
-                logging.error(f"Error retrieving YouTube link: {e}")
+                logging.error(f"Error retrieving YouTube link for query '{sq}': {e}")
                 continue
     return None
 
@@ -240,7 +240,6 @@ async def update_progress_loop(ctx):
     if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
         update_progress_loop.cancel()
         return
-
     elapsed = time.time() - progress_start_time
     progress = min(elapsed / progress_duration, 1.0)
     minutes, seconds = divmod(int(elapsed), 60)
@@ -269,7 +268,6 @@ def create_progress_bar(progress):
     return f"{bar} {int(progress * 100)}%"
 
 ### Events & Commands ###
-
 @bot.event
 async def on_ready():
     print(f'Bot ist eingeloggt als {bot.user}')
@@ -317,9 +315,8 @@ async def play(ctx, *, url: str):
             await ctx.send(lang['playlist_timeout'])
             return
 
-    # Spotify Track: Nutze ausschließlich YouTube als Quelle
+    # Spotify Track: Wir nutzen ausschließlich YouTube als Fallback
     elif 'open.spotify.com/track' in url:
-        # Hole die Spotify-Metadaten (Preview-Link ignorieren)
         _, track_name, artist_name, album_art, duration, _ = await get_spotify_track_info(url)
         fallback_query = f"{artist_name} - {track_name} official audio"
         fallback_url = await get_youtube_url(fallback_query)
@@ -374,7 +371,6 @@ async def play(ctx, *, url: str):
     else:
         song_queue.append((ctx, url))
         await ctx.send(lang['song_added_to_queue'].format(username=ctx.author.name))
-
     if not ctx.voice_client.is_playing():
         await play_next_song(ctx.voice_client)
 
@@ -390,11 +386,7 @@ async def play_next_song(voice_client):
                 'format': 'bestaudio/best',
                 'noplaylist': True,
                 'quiet': True,
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '320',
-                }],
+                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}],
             }
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -436,11 +428,7 @@ async def play_previous_song(voice_client):
                 'format': 'bestaudio/best',
                 'noplaylist': True,
                 'quiet': True,
-                'postprocessors': [{
-                    'key': 'FFmpegExtractAudio',
-                    'preferredcodec': 'mp3',
-                    'preferredquality': '320',
-                }],
+                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}],
             }
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -506,12 +494,6 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     progress_last_progress = -1
     update_progress_loop.start(ctx)
 
-def create_progress_bar(progress):
-    length = 20
-    filled = int(progress * length)
-    bar = '▰' * filled + '▱' * (length - filled)
-    return f"{bar} {int(progress * 100)}%"
-
 @bot.event
 async def on_raw_reaction_add(payload):
     global now_playing_message
@@ -558,7 +540,6 @@ async def on_raw_reaction_add(payload):
     user = guild.get_member(payload.user_id)
     await message.remove_reaction(payload.emoji, user)
 
-# Volume Command
 volume_name, volume_aliases = get_command_info('volume')
 @bot.command(name=volume_name, aliases=volume_aliases, help=lang['volume_help'])
 async def volume_cmd(ctx, value: int = None):
@@ -577,7 +558,6 @@ async def volume_cmd(ctx, value: int = None):
     else:
         await ctx.send(lang['no_voice_client'])
 
-# Pause Command
 pause_name, pause_aliases = get_command_info('pause')
 @bot.command(name=pause_name, aliases=pause_aliases, help=lang['pause_help'])
 async def pause_cmd(ctx):
@@ -585,7 +565,6 @@ async def pause_cmd(ctx):
         ctx.voice_client.pause()
         await ctx.send(lang['song_paused'])
 
-# Resume Command
 resume_name, resume_aliases = get_command_info('resume')
 @bot.command(name=resume_name, aliases=resume_aliases, help=lang['resume_help'])
 async def resume_cmd(ctx):
@@ -593,7 +572,6 @@ async def resume_cmd(ctx):
         ctx.voice_client.resume()
         await ctx.send(lang['song_resumed'])
 
-# Skip Command
 skip_name, skip_aliases = get_command_info('skip')
 @bot.command(name=skip_name, aliases=skip_aliases, help=lang['skip_help'])
 async def skip_cmd(ctx):
@@ -601,7 +579,6 @@ async def skip_cmd(ctx):
         ctx.voice_client.stop()
         await ctx.send(lang['song_skipped'])
 
-# Stop Command
 stop_name, stop_aliases = get_command_info('stop')
 @bot.command(name=stop_name, aliases=stop_aliases, help=lang['stop_help'])
 async def stop_cmd(ctx):
@@ -620,7 +597,6 @@ async def stop_cmd(ctx):
                 pass
             now_playing_message = None
 
-# Queue Command
 queue_name, queue_aliases = get_command_info('queue')
 @bot.command(name=queue_name, aliases=queue_aliases, help=lang['queue_help'])
 async def queue_cmd(ctx):
@@ -647,7 +623,6 @@ async def queue_cmd(ctx):
         print("Die Warteschlange ist leer.")
         await ctx.send(lang['queue_empty'])
 
-# Help Command
 help_name, help_aliases = get_command_info('help')
 @bot.command(name=help_name, aliases=help_aliases, help=lang['help_help'])
 async def help_cmd(ctx):
@@ -656,7 +631,6 @@ async def help_cmd(ctx):
         embed.add_field(name=f"{config['command_prefix']}{command.name}", value=command.help, inline=False)
     await ctx.send(embed=embed)
 
-# Loop Command
 loop_name, loop_aliases = get_command_info('loop')
 @bot.command(name=loop_name, aliases=loop_aliases, help=lang['loop_help'])
 async def loop_cmd(ctx):
