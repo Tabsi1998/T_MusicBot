@@ -337,30 +337,27 @@ async def play(ctx, *, url: str):
 
     # Spotify Track
     elif 'open.spotify.com/track' in url:
-        # Spotify-Infos abrufen
-        query, track_name, artist_name, album_art, duration, preview_url = await get_spotify_track_info(url)
-        
-        # Falls kein Preview vorhanden ist, versuche über YouTube zu suchen
-        if not preview_url:
-            fallback_query = f"{artist_name} - {track_name} official audio"
-            fallback_url = await get_youtube_url(fallback_query)
-            if fallback_url:
-                preview_url = fallback_url
-            else:
-                await ctx.send("Konnte keinen abspielbaren Link für diesen Track finden.")
-                return
+        # Hole die Spotify-Metadaten (wir ignorieren den Preview-Link)
+        query, track_name, artist_name, album_art, duration, _ = await get_spotify_track_info(url)
+        # Baue den Suchstring für YouTube – hier "official audio" kann zu besseren Ergebnissen führen.
+        fallback_query = f"{artist_name} - {track_name} official audio"
+        fallback_url = await get_youtube_url(fallback_query)
+        if not fallback_url:
+            await ctx.send("Konnte keinen abspielbaren Link für diesen Track finden.")
+            return
+        # Nutze den YouTube-Link als Abspielquelle
+        preview_url = fallback_url
 
-        # Verbinde mit dem Voice-Channel, falls nicht bereits verbunden
+        # Verbinde mit dem Voice-Channel, falls noch nicht verbunden
         if ctx.voice_client is None:
             await ctx.author.voice.channel.connect()
 
-        # Optionen für FFmpeg
+        # FFmpeg-Optionen (wie gehabt)
         ffmpeg_options = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
             'options': '-vn'
         }
 
-        # Audioquelle (entweder Spotify-Preview oder YouTube-Fallback) abspielen
         source = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(preview_url, executable=config['ffmpeg_path'], **ffmpeg_options),
             volume=volume / 100
@@ -368,6 +365,7 @@ async def play(ctx, *, url: str):
 
         ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(on_finished(ctx), bot.loop))
         await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
+
 
 
     # YouTube Playlist
