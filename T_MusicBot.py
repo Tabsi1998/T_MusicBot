@@ -218,10 +218,11 @@ def get_youtube_url_sync(query):
     if query in url_cache:
         return url_cache[query]
     ydl_opts = {
-        'format': 'bestaudio/best',
-        'noplaylist': True,
-        'quiet': True
-    }
+    'format': 'bestaudio/best',
+    'noplaylist': True,
+    'quiet': True,
+    'no_warnings': True
+}
     search_terms = [f"{query} lyrics", f"{query} audio", f"{query}"]
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         for term in search_terms:
@@ -336,10 +337,12 @@ async def play(ctx, *, url: str):
 
     # Spotify Track
     elif 'open.spotify.com/track' in url:
+        # Spotify-Infos abrufen
         query, track_name, artist_name, album_art, duration, preview_url = await get_spotify_track_info(url)
-        # Wenn kein Preview vorhanden ist, fallback auf YouTube-Suche:
+        
+        # Falls kein Preview vorhanden ist, versuche über YouTube zu suchen
         if not preview_url:
-            fallback_query = f"{artist_name} - {track_name} audio"
+            fallback_query = f"{artist_name} - {track_name} official audio"
             fallback_url = await get_youtube_url(fallback_query)
             if fallback_url:
                 preview_url = fallback_url
@@ -347,25 +350,23 @@ async def play(ctx, *, url: str):
                 await ctx.send("Konnte keinen abspielbaren Link für diesen Track finden.")
                 return
 
-        # Verbinde mit Voice-Channel, falls nicht bereits verbunden
+        # Verbinde mit dem Voice-Channel, falls nicht bereits verbunden
         if ctx.voice_client is None:
             await ctx.author.voice.channel.connect()
 
-        # Optionen für FFmpeg setzen
+        # Optionen für FFmpeg
         ffmpeg_options = {
             'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
             'options': '-vn'
         }
-        
-        # Audioquelle über den (entweder Spotify-Preview oder YouTube-Fallback) Link abspielen
+
+        # Audioquelle (entweder Spotify-Preview oder YouTube-Fallback) abspielen
         source = discord.PCMVolumeTransformer(
             discord.FFmpegPCMAudio(preview_url, executable=config['ffmpeg_path'], **ffmpeg_options),
             volume=volume / 100
         )
-        
+
         ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(on_finished(ctx), bot.loop))
-        
-        # Embed für den Song anzeigen
         await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
 
 
