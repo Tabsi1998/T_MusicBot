@@ -72,6 +72,24 @@ def get_command_info(command_key):
 
 bot = commands.Bot(command_prefix=config['command_prefix'], intents=intents, help_command=None)
 
+# Globaler Check, der sicherstellt, dass Befehle nur im Textkanal des Sprachchats ausgeführt werden,
+# in dem der User sich befindet.
+def voice_text_channel_only():
+    async def predicate(ctx):
+        # Wenn der User in keinem Sprachkanal ist, erlauben wir den Command (oder du passt das an)
+        if not ctx.author.voice or not ctx.author.voice.channel:
+            return True
+        # Suche den Textkanal, dessen Name exakt mit dem Voice-Channel übereinstimmt
+        associated_text = discord.utils.get(ctx.guild.text_channels, name=ctx.author.voice.channel.name)
+        if associated_text and ctx.channel.id != associated_text.id:
+            await ctx.send(f"Bitte benutze den Textkanal {associated_text.mention}, der zum Sprachkanal gehört!")
+            return False
+        return True
+    return commands.check(predicate)
+
+# Füge den Check global hinzu, sodass alle Commands überprüft werden
+bot.add_check(voice_text_channel_only())
+
 # Funktionen zum Speichern und Laden der Lautstärke
 def save_volume(volume):
     global config
@@ -319,30 +337,37 @@ async def play(ctx, *, url: str):
     # Spotify Track
     elif 'open.spotify.com/track' in url:
         query, track_name, artist_name, album_art, duration, preview_url = await get_spotify_track_info(url)
-        if preview_url:
-            # Verbinde mit Voice-Channel, falls nicht bereits verbunden
-            if ctx.voice_client is None:
-                await ctx.author.voice.channel.connect()
+        # Wenn kein Preview vorhanden ist, fallback auf YouTube-Suche:
+        if not preview_url:
+            fallback_query = f"{artist_name} - {track_name} audio"
+            fallback_url = await get_youtube_url(fallback_query)
+            if fallback_url:
+                preview_url = fallback_url
+            else:
+                await ctx.send("Konnte keinen abspielbaren Link für diesen Track finden.")
+                return
 
-            # Optionen für FFmpeg setzen
-            ffmpeg_options = {
-                'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
-                'options': '-vn'
-            }
-            
-            # Audioquelle direkt über preview_url abspielen
-            source = discord.PCMVolumeTransformer(
-                discord.FFmpegPCMAudio(preview_url, executable=config['ffmpeg_path'], **ffmpeg_options),
-                volume=volume / 100
-            )
-            
-            ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(on_finished(ctx), bot.loop))
-            
-            # Embed für den Song anzeigen
-            await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
-        else:
-            await ctx.send(lang['playback_error'])
-            return
+        # Verbinde mit Voice-Channel, falls nicht bereits verbunden
+        if ctx.voice_client is None:
+            await ctx.author.voice.channel.connect()
+
+        # Optionen für FFmpeg setzen
+        ffmpeg_options = {
+            'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+            'options': '-vn'
+        }
+        
+        # Audioquelle über den (entweder Spotify-Preview oder YouTube-Fallback) Link abspielen
+        source = discord.PCMVolumeTransformer(
+            discord.FFmpegPCMAudio(preview_url, executable=config['ffmpeg_path'], **ffmpeg_options),
+            volume=volume / 100
+        )
+        
+        ctx.voice_client.play(source, after=lambda e: asyncio.run_coroutine_threadsafe(on_finished(ctx), bot.loop))
+        
+        # Embed für den Song anzeigen
+        await send_now_playing_embed(ctx, f"{artist_name} - {track_name}", duration, album_art)
+
 
     # YouTube Playlist
     elif 'youtube.com/playlist' in url or ('list=' in url and 'watch?v=' in url):
