@@ -75,7 +75,7 @@ cd T_MusicBot
 Stelle sicher, dass eine `requirements.txt`-Datei vorhanden ist. Installiere die Python-Abhängigkeiten mit:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt --break-system-packages
 ```
 
 
