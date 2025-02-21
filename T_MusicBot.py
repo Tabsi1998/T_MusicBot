@@ -21,7 +21,7 @@ logging.basicConfig(filename='error.log', level=logging.ERROR,
 
 def load_config():
     try:
-        with open(r'D:\GIT\T_MusicBot\config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'config\config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
@@ -29,7 +29,7 @@ def load_config():
 
 def load_language(language_code):
     try:
-        with open(r'D:\GIT\T_MusicBot\config\lang.json', 'r', encoding='utf-8') as f:
+        with open(r'config\lang.json', 'r', encoding='utf-8') as f:
             languages = json.load(f)
             default_language = languages.get('en') or next(iter(languages.values()))
             return languages.get(language_code, default_language)
