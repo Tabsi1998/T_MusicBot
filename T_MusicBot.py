@@ -108,7 +108,7 @@ def save_volume(vol):
     global config
     try:
         config['default_volume'] = vol
-        with open(r'D:\GIT\T_MusicBot\config\config.json', 'w', encoding='utf-8') as f:
+        with open(r'config\config.json', 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"Error saving config.json: {e}")
