@@ -91,7 +91,7 @@ bot.add_check(voice_text_channel_only())
 # 4. Globale Variablen & Funktionen
 ##############################################
 volume = config.get('default_volume', 50)
-# Die Queue speichert nun Tupel: (ctx, youtube_url, display_title)
+# Die Queue speichert Tupel: (ctx, youtube_url, display_title)
 song_queue = deque()
 played_songs = deque()
 current_song = None
@@ -126,7 +126,6 @@ async def get_spotify_track_info(url):
             album_art = info['album']['images'][0]['url']
             duration_sec = info['duration_ms'] // 1000
             print(f"DEBUG: Spotify -> {artist_name} - {track_name} ({duration_sec}s)")
-            # Wir nutzen nicht den Preview-Link, da er oft DRM-behaftet ist.
             return None, track_name, artist_name, album_art, duration_sec, info.get('preview_url')
         except Exception as e:
             logging.error(f"Error retrieving Spotify track info: {e}")
@@ -137,7 +136,6 @@ async def get_spotify_playlist_tracks(url):
     def fetch_tracks():
         try:
             normalized_url = normalize_spotify_url(url)
-            # Extrahiere die Playlist-ID
             playlist_id = normalized_url.split("playlist/")[1].split("?")[0]
             print(f"DEBUG: Playlist ID: {playlist_id}")
             results = sp.playlist_items(playlist_id)
@@ -218,6 +216,7 @@ def get_youtube_url_sync(query):
 
 async def get_youtube_playlist_urls(url):
     def fetch_playlist_urls():
+        # Erste Option: Flat-Modus (schnell, liefert nur minimale Infos)
         ydl_opts = {
             'quiet': True,
             'extract_flat': True,
@@ -226,18 +225,20 @@ async def get_youtube_playlist_urls(url):
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
-                if info is None:
-                    print("DEBUG: Keine Informationen zur Playlist erhalten.")
-                    return None
                 entries = info.get('entries', [])
+                # Fallback: Falls Flat-Modus keine Einträge liefert, versuche es ohne extract_flat
+                if not entries:
+                    print("DEBUG: Flat extraction ergab 0 Einträge, versuche ohne 'extract_flat'.")
+                    ydl_opts.pop('extract_flat', None)
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
+                        info = ydl2.extract_info(url, download=False)
+                        entries = info.get('entries', [])
                 urls = []
                 for entry in entries:
-                    # Manche Einträge haben die ID unter 'id', andere direkt als URL
                     if 'id' in entry:
                         video_url = f"https://www.youtube.com/watch?v={entry['id']}"
                         urls.append(video_url)
                     elif 'url' in entry:
-                        # Prüfe, ob die URL bereits vollständig ist oder nur eine ID
                         if entry['url'].startswith("http"):
                             urls.append(entry['url'])
                         else:
@@ -275,7 +276,7 @@ async def get_song_info_async(url):
     return await asyncio.to_thread(fetch_song_info)
 
 ##############################################
-# 4c. Fortschrittsanzeige
+# 4c. Fortschrittsanzeige (Modern & Elegant)
 ##############################################
 @tasks.loop(seconds=5)
 async def update_progress_loop(ctx):
@@ -290,18 +291,22 @@ async def update_progress_loop(ctx):
     progress = min(elapsed / progress_duration, 1.0)
     minutes, seconds = divmod(int(elapsed), 60)
     total_minutes, total_seconds = divmod(int(progress_duration), 60)
-    progress_bar = create_progress_bar(progress)
+    # Modernere Progressbar mit Block-Emojis
+    bar_length = 20
+    filled = int(progress * bar_length)
+    bar = "█" * filled + "░" * (bar_length - filled)
+    progress_bar = f"{bar} {int(progress * 100)}%"
     new_progress_level = int(progress * 100) // 5
     if new_progress_level != progress_last_progress:
         progress_last_progress = new_progress_level
         embed = now_playing_message.embeds[0]
         embed.clear_fields()
-        embed.add_field(name="Dauer", value=f"{minutes}:{seconds:02d} / {total_minutes}:{total_seconds:02d}", inline=True)
+        embed.add_field(name="Dauer", value=f"{minutes:02d}:{seconds:02d} / {total_minutes:02d}:{total_seconds:02d}", inline=True)
         embed.add_field(name="Fortschritt", value=progress_bar, inline=False)
         embed.title = "⏸️ Jetzt spielt 🎶" if ctx.voice_client.is_paused() else "Jetzt spielt 🎶"
-        # Vorschau der nächsten 3 Songs (Display-Titel aus Queue)
+        # Vorschau auf die nächsten 3 Songs (schön formatiert)
         if song_queue:
-            next_tracks = [s[2] for s in list(song_queue)[:3]]
+            next_tracks = [f"**{s[2]}**" for s in list(song_queue)[:3]]
             embed.add_field(name="Nächste:", value="\n".join(next_tracks), inline=False)
         else:
             embed.add_field(name="Nächste:", value="Keine weiteren Songs in der Queue.", inline=False)
@@ -312,12 +317,6 @@ async def update_progress_loop(ctx):
             return
     if elapsed >= progress_duration:
         update_progress_loop.cancel()
-
-def create_progress_bar(progress):
-    length = 20
-    filled = int(progress * length)
-    bar = '▰' * filled + '▱' * (length - filled)
-    return f"{bar} {int(progress * 100)}%"
 
 ##############################################
 # 5. Discord Events & Befehle
@@ -397,7 +396,6 @@ async def play(ctx, *, url: str):
     if 'open.spotify.com/playlist' in url:
         all_tracks = await get_spotify_playlist_tracks(url)
         if all_tracks:
-            # Lade zuerst nur die ersten 5 Songs
             initial_count = 5
             for track in all_tracks[:initial_count]:
                 youtube_url = await get_youtube_url(track)
@@ -408,7 +406,6 @@ async def play(ctx, *, url: str):
             await ctx.send(lang['playlist_added_spotify'].format(username=ctx.author.name) +
                            f" ({initial_count} Songs geladen, restliche werden im Hintergrund nachgeladen)")
             
-            # Hintergrundtask: Restliche Songs nachladen
             async def load_remaining_tracks():
                 for track in all_tracks[initial_count:]:
                     youtube_url = await get_youtube_url(track)
@@ -585,13 +582,14 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     embed.set_thumbnail(url=thumbnail_url)
     total_minutes, total_seconds = divmod(int(duration), 60)
     embed.add_field(name="Dauer", value=f"{total_minutes}:{total_seconds:02d}", inline=True)
-    # Vorschau auf die nächsten 3 Songs
+    # Vorschau auf die nächsten 3 Songs (Display-Titel)
     if song_queue:
-        next_tracks = [s[2] for s in list(song_queue)[:3]]
+        next_tracks = [f"• {s[2]}" for s in list(song_queue)[:3]]
         embed.add_field(name="Nächste:", value="\n".join(next_tracks), inline=False)
     else:
         embed.add_field(name="Nächste:", value="Keine weiteren Songs in der Queue.", inline=False)
     embed.set_footer(text=config['embed_settings']['footer'])
+    # Modernes Design: Du kannst hier auch Icons oder andere Formatierungen einbauen.
     if now_playing_message is not None:
         try:
             await now_playing_message.delete()
