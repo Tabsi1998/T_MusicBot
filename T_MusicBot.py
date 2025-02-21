@@ -5,7 +5,7 @@ import asyncio
 import time
 import json
 import spotipy
-from spotipy.oauth2 import SpotifyClientCredentials
+from spotipy.oauth2 import SpotifyOAuth  # Verwende jetzt OAuth
 from collections import deque
 import logging
 import os
@@ -21,7 +21,6 @@ logging.basicConfig(filename='error.log', level=logging.ERROR,
 
 def load_config():
     try:
-        # Verwende rohe Strings, damit Backslashes nicht als Escape-Zeichen interpretiert werden
         with open(r'D:\GIT\T_MusicBot\config\config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
@@ -46,12 +45,14 @@ config = load_config()
 lang = load_language(config['language'])
 
 ##############################################
-# 2. Spotify-Authentifizierung
+# 2. Spotify-Authentifizierung (OAuth)
 ##############################################
 try:
-    sp = spotipy.Spotify(auth_manager=SpotifyClientCredentials(
+    sp = spotipy.Spotify(auth_manager=SpotifyOAuth(
         client_id=config['spotify_client_id'],
-        client_secret=config['spotify_client_secret']
+        client_secret=config['spotify_client_secret'],
+        redirect_uri="http://localhost:8888/callback",
+        scope="playlist-read-private user-library-read user-follow-read"
     ))
 except Exception as e:
     logging.error(f"Error during Spotify authentication: {e}")
@@ -74,7 +75,6 @@ def get_command_info(command_key):
 
 bot = commands.Bot(command_prefix=config['command_prefix'], intents=intents, help_command=None)
 
-# Globaler Check: Befehle nur im Textkanal des Voice-Channels erlauben
 def voice_text_channel_only():
     async def predicate(ctx):
         if not ctx.author.voice or not ctx.author.voice.channel:
@@ -132,22 +132,35 @@ async def get_spotify_track_info(url):
             return None, None, None, None, None, None
     return await asyncio.to_thread(fetch_track_info)
 
-
 async def get_spotify_playlist_tracks(url):
     def fetch_tracks():
         try:
-            playlist_id = url.split("playlist/")[1].split("?")[0]
+            normalized_url = normalize_spotify_url(url)
+            # Extrahiere Playlist-ID
+            playlist_id = normalized_url.split("playlist/")[1].split("?")[0]
+            print(f"DEBUG: Playlist ID: {playlist_id}")
             results = sp.playlist_items(playlist_id)
             tracks = []
             while results:
                 for item in results['items']:
                     track = item['track']
-                    # Wir nutzen hier nicht den Preview-Link, sondern verwenden YouTube als Fallback.
-                    tracks.append(f"{track['artists'][0]['name']} - {track['name']}")
-                results = sp.next(results) if results.get('next') else None
+                    if track is None:
+                        print("DEBUG: Kein Track gefunden in einem Item!")
+                        continue
+                    artist = track['artists'][0]['name']
+                    title = track['name']
+                    print(f"DEBUG: Gefundener Track: {artist} - {title}")
+                    tracks.append(f"{artist} - {title}")
+                if results.get('next'):
+                    results = sp.next(results)
+                else:
+                    results = None
+            print(f"DEBUG: Total tracks found: {len(tracks)}")
             return tracks
         except Exception as e:
+            # Hier wird auch ein 404 abgefangen – Playlist nicht verfügbar
             logging.error(f"Error retrieving Spotify playlist tracks: {e}")
+            print(f"DEBUG: Error retrieving Spotify playlist tracks: {e}")
             return None
     return await asyncio.to_thread(fetch_tracks)
 
@@ -167,7 +180,6 @@ def get_youtube_url_sync(query):
         'no_warnings': True,
         'ignoreerrors': True,
     }
-    # Variationen der Suche – von spezifisch zu allgemein
     search_queries = [
         f"{query} full song", 
         f"{query} audio", 
@@ -186,11 +198,9 @@ def get_youtube_url_sync(query):
                         print(f"DEBUG: Gefunden: {video_url}")
                         url_cache[query] = video_url
                         return video_url
-                # Falls keine Ergebnisse, einfach weitermachen.
             except Exception as e:
                 logging.error(f"Error retrieving YouTube link for query '{sq}': {e}")
                 continue
-        # Fallback: Versuche die rohe Suchanfrage ohne Zusätze
         try:
             print(f"DEBUG: Fallback Suche YouTube nach: {query}")
             info = ydl.extract_info(f"ytsearch:{query}", download=False)
@@ -204,7 +214,6 @@ def get_youtube_url_sync(query):
         except Exception as e:
             logging.error(f"Fallback error for query '{query}': {e}")
     return None
-
 
 async def get_youtube_playlist_urls(url):
     def fetch_playlist_urls():
@@ -348,7 +357,7 @@ async def play(ctx, *, url: str):
         await ctx.send(lang['no_voice_channel'])
         return
     
-    # Spotify-Link normalisieren, damit auch URLs mit "/intl-de" korrekt verarbeitet werden
+    # Normalisiere Spotify-Links
     if "open.spotify.com" in url:
         url = normalize_spotify_url(url)
     
@@ -362,7 +371,6 @@ async def play(ctx, *, url: str):
         if tracks:
             await ctx.send(lang['playlist_added_spotify'].format(username=ctx.author.name))
             for track in tracks:
-                # Erstelle Suchquery anhand von "Künstler - Titel"
                 youtube_url = await get_youtube_url(track)
                 if youtube_url:
                     song_queue.append((ctx, youtube_url))
@@ -409,10 +417,10 @@ async def play(ctx, *, url: str):
                 await ctx.send(lang['playback_error'])
                 return
         await ctx.send(lang['song_added_to_queue'].format(username=ctx.author.name))
-
+    
     if not ctx.voice_client.is_playing():
         await play_next_song(ctx.voice_client)
-        
+
 # Nächsten Song aus der Queue abspielen
 async def play_next_song(voice_client):
     global now_playing_message, played_songs, current_song, current_title, current_thumbnail
