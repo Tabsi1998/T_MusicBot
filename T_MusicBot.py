@@ -207,11 +207,14 @@ def get_youtube_url_sync(query):
     if query in url_cache:
         return url_cache[query]
     ydl_opts = {
-        'format': 'bestaudio/best',
-        'noplaylist': True,
-        'quiet': True,
-        'no_warnings': True,
-        'ignoreerrors': True,
+    'format': 'bestaudio/best',
+    'noplaylist': True,
+    'quiet': True,
+    'no_warnings': True,
+    'ignoreerrors': True,
+    'http_headers': {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+        }
     }
     search_queries = [
         f"{query} full song",
