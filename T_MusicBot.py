@@ -26,7 +26,7 @@ logging.basicConfig(
 
 def load_config():
     try:
-        with open(r'config\config.json', 'r', encoding='utf-8') as f:
+        with open(r'config/config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
@@ -35,7 +35,7 @@ def load_config():
 
 def load_language(language_code):
     try:
-        with open(r'config\lang.json', 'r', encoding='utf-8') as f:
+        with open(r'config/lang.json', 'r', encoding='utf-8') as f:
             languages = json.load(f)
             default_language = languages.get('en') or next(iter(languages.values()))
             return languages.get(language_code, default_language)
@@ -135,7 +135,7 @@ def save_volume(vol):
     global config
     try:
         config['default_volume'] = vol
-        with open(r'config\config.json', 'w', encoding='utf-8') as f:
+        with open(r'config/config.json', 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"Error saving config.json: {e}")
