@@ -5,7 +5,7 @@ import asyncio
 import time
 import json
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth  # OAuth statt Client Credentials
+from spotipy.oauth2 import SpotifyOAuth  # Verwende jetzt OAuth
 from collections import deque
 import logging
 import os
@@ -13,16 +13,12 @@ import os
 ##############################################
 # 1. Logging, Konfiguration & Sprachdateien
 ##############################################
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-CONFIG_PATH = os.path.join(BASE_DIR, "config", "config.json")
-LANG_PATH = os.path.join(BASE_DIR, "config", "lang.json")
-
-if not os.path.exists(os.path.join(BASE_DIR, "error.log")):
-    with open(os.path.join(BASE_DIR, "error.log"), 'w'):
+if not os.path.exists('error.log'):
+    with open('error.log', 'w'):
         pass
 
 logging.basicConfig(
-    filename=os.path.join(BASE_DIR, "error.log"),
+    filename='error.log',
     level=logging.ERROR,
     format='%(asctime)s:%(levelname)s:%(message)s'
 )
@@ -30,7 +26,7 @@ logging.basicConfig(
 
 def load_config():
     try:
-        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
+        with open(r'config/config.json', 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
@@ -39,7 +35,7 @@ def load_config():
 
 def load_language(language_code):
     try:
-        with open(LANG_PATH, 'r', encoding='utf-8') as f:
+        with open(r'config/lang.json', 'r', encoding='utf-8') as f:
             languages = json.load(f)
             default_language = languages.get('en') or next(iter(languages.values()))
             return languages.get(language_code, default_language)
@@ -49,7 +45,9 @@ def load_language(language_code):
 
 
 def normalize_spotify_url(url: str) -> str:
-    # Entfernt unerwünschte Segmente wie "/intl-de"
+    """
+    Entfernt unerwünschte Segmente wie "/intl-de" aus dem Spotify-Link.
+    """
     return url.replace("/intl-de", "")
 
 
@@ -120,8 +118,7 @@ bot.add_check(voice_text_channel_only())
 # 4. Globale Variablen & Funktionen
 ##############################################
 volume = config.get('default_volume', 50)
-# Die Queue speichert Tupel: (ctx, youtube_url, display_title)
-song_queue = deque()
+song_queue = deque()         # Speichert Tupel: (ctx, youtube_url)
 played_songs = deque()
 current_song = None
 current_title = None
@@ -138,9 +135,7 @@ def save_volume(vol):
     global config
     try:
         config['default_volume'] = vol
-        # Nutze hier plattformunabhängige Pfade
-        config_file = os.path.join(BASE_DIR, "config", "config.json")
-        with open(config_file, 'w', encoding='utf-8') as f:
+        with open(r'config/config.json', 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"Error saving config.json: {e}")
@@ -159,6 +154,7 @@ async def get_spotify_track_info(url):
             album_art = info['album']['images'][0]['url']
             duration_sec = info['duration_ms'] // 1000
             print(f"DEBUG: Spotify -> {artist_name} - {track_name} ({duration_sec}s)")
+            # Ignoriere preview_url, da sie oft DRM-behaftet ist
             return None, track_name, artist_name, album_art, duration_sec, info.get('preview_url')
         except Exception as e:
             logging.error(f"Error retrieving Spotify track info: {e}")
@@ -171,6 +167,7 @@ async def get_spotify_playlist_tracks(url):
     def fetch_tracks():
         try:
             normalized_url = normalize_spotify_url(url)
+            # Extrahiere Playlist-ID
             playlist_id = normalized_url.split("playlist/")[1].split("?")[0]
             print(f"DEBUG: Playlist ID: {playlist_id}")
             results = sp.playlist_items(playlist_id)
@@ -183,9 +180,8 @@ async def get_spotify_playlist_tracks(url):
                         continue
                     artist = track['artists'][0]['name']
                     title = track['name']
-                    display = f"{artist} - {title}"
-                    print(f"DEBUG: Gefundener Track: {display}")
-                    tracks.append(display)
+                    print(f"DEBUG: Gefundener Track: {artist} - {title}")
+                    tracks.append(f"{artist} - {title}")
                 if results.get('next'):
                     results = sp.next(results)
                 else:
@@ -261,33 +257,16 @@ async def get_youtube_playlist_urls(url):
         ydl_opts = {
             'quiet': True,
             'extract_flat': True,
-            'skip_download': True,
+            'skip_download': True
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 entries = info.get('entries', [])
-                # Falls Flat-Modus keine Einträge liefert:
-                if not entries:
-                    print("DEBUG: Flat extraction ergab 0 Einträge, versuche ohne 'extract_flat'.")
-                    ydl_opts.pop('extract_flat', None)
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
-                        info = ydl2.extract_info(url, download=False)
-                        entries = info.get('entries', [])
-                urls = []
-                for entry in entries:
-                    if 'id' in entry:
-                        urls.append(f"https://www.youtube.com/watch?v={entry['id']}")
-                    elif 'url' in entry:
-                        if entry['url'].startswith("http"):
-                            urls.append(entry['url'])
-                        else:
-                            urls.append(f"https://www.youtube.com/watch?v={entry['url']}")
-                print(f"DEBUG: {len(urls)} Videos aus der Playlist extrahiert.")
-                return urls
+                return [f"https://www.youtube.com/watch?v={entry['id']}"
+                        for entry in entries if 'id' in entry]
         except Exception as e:
             logging.error(f"Error retrieving YouTube playlist URLs: {e}")
-            print(f"DEBUG: Fehler beim Extrahieren der Playlist-URLs: {e}")
             return None
 
     return await asyncio.to_thread(fetch_playlist_urls)
@@ -324,7 +303,7 @@ async def get_song_info_async(url):
     return await asyncio.to_thread(fetch_song_info)
 
 ##############################################
-# 4c. Fortschrittsanzeige (Modern & Elegant)
+# 4c. Fortschrittsanzeige
 ##############################################
 @tasks.loop(seconds=5)
 async def update_progress_loop(ctx):
@@ -342,30 +321,16 @@ async def update_progress_loop(ctx):
     progress = min(elapsed / progress_duration, 1.0)
     minutes, seconds = divmod(int(elapsed), 60)
     total_minutes, total_seconds = divmod(int(progress_duration), 60)
-
-    bar_length = 20
-    filled = int(progress * bar_length)
-    bar = "█" * filled + "░" * (bar_length - filled)
-    progress_bar = f"{bar} {int(progress * 100)}%"
+    progress_bar = create_progress_bar(progress)
     new_progress_level = int(progress * 100) // 5
 
     if new_progress_level != progress_last_progress:
         progress_last_progress = new_progress_level
         embed = now_playing_message.embeds[0]
         embed.clear_fields()
-        embed.add_field(
-            name="Dauer",
-            value=f"{minutes:02d}:{seconds:02d} / {total_minutes:02d}:{total_seconds:02d}",
-            inline=True
-        )
+        embed.add_field(name="Dauer", value=f"{minutes}:{seconds:02d} / {total_minutes}:{total_seconds:02d}", inline=True)
         embed.add_field(name="Fortschritt", value=progress_bar, inline=False)
         embed.title = "⏸️ Jetzt spielt 🎶" if ctx.voice_client.is_paused() else "Jetzt spielt 🎶"
-        # Vorschau auf die nächsten 3 Songs
-        if song_queue:
-            next_tracks = [f"**{s[2]}**" for s in list(song_queue)[:3]]
-            embed.add_field(name="Nächste:", value="\n".join(next_tracks), inline=False)
-        else:
-            embed.add_field(name="Nächste:", value="Keine weiteren Songs in der Queue.", inline=False)
         try:
             await now_playing_message.edit(embed=embed)
         except discord.errors.NotFound:
@@ -374,6 +339,13 @@ async def update_progress_loop(ctx):
 
     if elapsed >= progress_duration:
         update_progress_loop.cancel()
+
+
+def create_progress_bar(progress):
+    length = 20
+    filled = int(progress * length)
+    bar = '▰' * filled + '▱' * (length - filled)
+    return f"{bar} {int(progress * 100)}%"
 
 ##############################################
 # 5. Discord Events & Befehle
@@ -459,28 +431,15 @@ async def play(ctx, *, url: str):
 
     # Spotify Playlist
     if 'open.spotify.com/playlist' in url:
-        all_tracks = await get_spotify_playlist_tracks(url)
-        if all_tracks:
-            initial_count = 5
-            for track in all_tracks[:initial_count]:
+        tracks = await get_spotify_playlist_tracks(url)
+        if tracks:
+            await ctx.send(lang['playlist_added_spotify'].format(username=ctx.author.name))
+            for track in tracks:
                 youtube_url = await get_youtube_url(track)
                 if youtube_url:
-                    song_queue.append((ctx, youtube_url, track))
+                    song_queue.append((ctx, youtube_url))
                 else:
                     print(f"DEBUG: Kein YouTube-Ergebnis für: {track}")
-            await ctx.send(lang['playlist_added_spotify'].format(username=ctx.author.name) +
-                           f" ({initial_count} Songs geladen, restliche werden im Hintergrund nachgeladen)")
-
-            async def load_remaining_tracks():
-                for track in all_tracks[initial_count:]:
-                    youtube_url = await get_youtube_url(track)
-                    if youtube_url:
-                        song_queue.append((ctx, youtube_url, track))
-                    else:
-                        print(f"DEBUG: Kein YouTube-Ergebnis für: {track}")
-                    await asyncio.sleep(0.1)
-
-            asyncio.create_task(load_remaining_tracks())
         else:
             await ctx.send(lang['playback_error'])
             return
@@ -496,7 +455,7 @@ async def play(ctx, *, url: str):
         if not youtube_url:
             await ctx.send(lang['playback_error'])
             return
-        song_queue.append((ctx, youtube_url, query))
+        song_queue.append((ctx, youtube_url))
         await ctx.send(lang['song_added_to_queue'].format(username=ctx.author.name))
 
     # YouTube Playlist
@@ -505,7 +464,7 @@ async def play(ctx, *, url: str):
         if urls:
             await ctx.send(lang['playlist_added_youtube'].format(username=ctx.author.name))
             for video_url in urls:
-                song_queue.append((ctx, video_url, video_url))
+                song_queue.append((ctx, video_url))
         else:
             await ctx.send(lang['playback_error'])
             return
@@ -513,11 +472,11 @@ async def play(ctx, *, url: str):
     # Einzelner YouTube-Link oder Suchbegriff
     else:
         if 'youtube.com/watch' in url or 'youtu.be/' in url:
-            song_queue.append((ctx, url, url))
+            song_queue.append((ctx, url))
         else:
             youtube_url = await get_youtube_url(url)
             if youtube_url:
-                song_queue.append((ctx, youtube_url, url))
+                song_queue.append((ctx, youtube_url))
             else:
                 await ctx.send(lang['playback_error'])
                 return
@@ -531,9 +490,9 @@ async def play_next_song(voice_client):
     global now_playing_message, played_songs, current_song, current_title, current_thumbnail
 
     if song_queue:
-        ctx, url, display_title = song_queue.popleft()
+        ctx, url = song_queue.popleft()
         if current_song is not None:
-            played_songs.append((ctx, current_song, "Aktueller Song"))
+            played_songs.append((ctx, current_song))
         current_song = url
 
         def fetch_song_info(url):
@@ -591,8 +550,8 @@ async def play_previous_song(voice_client):
 
     if played_songs:
         if current_song is not None:
-            song_queue.appendleft((None, current_song, "Aktueller Song"))
-        ctx, url, display_title = played_songs.pop()
+            song_queue.appendleft((None, current_song))
+        ctx, url = played_songs.pop()
         current_song = url
 
         def fetch_song_info():
@@ -640,7 +599,7 @@ async def play_previous_song(voice_client):
 async def on_finished(ctx):
     global is_looping, song_queue, current_song
     if is_looping:
-        song_queue.appendleft((ctx, current_song, "Aktueller Song"))
+        song_queue.appendleft((ctx, current_song))
     if song_queue:
         await play_next_song(ctx.voice_client)
     else:
@@ -659,12 +618,8 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     embed.set_thumbnail(url=thumbnail_url)
     total_minutes, total_seconds = divmod(int(duration), 60)
     embed.add_field(name="Dauer", value=f"{total_minutes}:{total_seconds:02d}", inline=True)
-    if song_queue:
-        next_tracks = [f"• {s[2]}" for s in list(song_queue)[:3]]
-        embed.add_field(name="Nächste:", value="\n".join(next_tracks), inline=False)
-    else:
-        embed.add_field(name="Nächste:", value="Keine weiteren Songs in der Queue.", inline=False)
     embed.set_footer(text=config['embed_settings']['footer'])
+
     if now_playing_message is not None:
         try:
             await now_playing_message.delete()
@@ -674,6 +629,7 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     now_playing_message = await ctx.send(embed=embed)
     for emoji in ["⏮️", "⏭️", "⏯️", "⏹️"]:
         await now_playing_message.add_reaction(emoji)
+
     progress_start_time = time.time()
     progress_duration = duration
     progress_last_progress = -1
@@ -763,8 +719,8 @@ async def queue_cmd(ctx):
     if song_queue:
         embed = discord.Embed(title="🎶 Warteschlange", color=discord.Color.purple())
         queue_message = await ctx.send(embed=embed)
-        for idx, (ctx_item, url, display_title) in enumerate(song_queue):
-            print(f"DEBUG: Verarbeite Song {idx + 1}: {display_title}")
+        for idx, (ctx_item, url) in enumerate(song_queue):
+            print(f"DEBUG: Verarbeite Song {idx + 1}: {url}")
             info = await get_song_info_async(url)
             if info:
                 title = info.get('title', 'Unbekannter Titel')
