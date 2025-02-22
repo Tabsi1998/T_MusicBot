@@ -16,20 +16,34 @@ import os
 if not os.path.exists('error.log'):
     with open('error.log', 'w'):
         pass
-logging.basicConfig(filename='error.log', level=logging.ERROR,
-                    format='%(asctime)s:%(levelname)s:%(message)s')
+
+logging.basicConfig(
+    filename='error.log',
+    level=logging.ERROR,
+    format='%(asctime)s:%(levelname)s:%(message)s'
+)
+
 
 def load_config():
     try:
+<<<<<<< HEAD
         with open(r'config\config.json', 'r', encoding='utf-8') as f:
+=======
+        with open(r'config/config.json', 'r', encoding='utf-8') as f:
+>>>>>>> v0.2.4
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
         raise
 
+
 def load_language(language_code):
     try:
+<<<<<<< HEAD
         with open(r'config\lang.json', 'r', encoding='utf-8') as f:
+=======
+        with open(r'config/lang.json', 'r', encoding='utf-8') as f:
+>>>>>>> v0.2.4
             languages = json.load(f)
             default_language = languages.get('en') or next(iter(languages.values()))
             return languages.get(language_code, default_language)
@@ -37,9 +51,17 @@ def load_language(language_code):
         logging.error(f"Error loading lang.json: {e}")
         raise
 
+
 def normalize_spotify_url(url: str) -> str:
+<<<<<<< HEAD
     # Entfernt unerwünschte Segmente wie "/intl-de"
+=======
+    """
+    Entfernt unerwünschte Segmente wie "/intl-de" aus dem Spotify-Link.
+    """
+>>>>>>> v0.2.4
     return url.replace("/intl-de", "")
+
 
 config = load_config()
 lang = load_language(config['language'])
@@ -67,32 +89,53 @@ intents.guilds = True
 intents.voice_states = True
 intents.reactions = True
 
+
 def get_command_info(command_key):
     command_info = config.get('commands', {}).get(command_key, {})
     name = command_info.get('name', command_key)
     aliases = command_info.get('aliases', [])
     return name, aliases
 
-bot = commands.Bot(command_prefix=config['command_prefix'], intents=intents, help_command=None)
+
+bot = commands.Bot(
+    command_prefix=config['command_prefix'],
+    intents=intents,
+    help_command=None
+)
+
 
 def voice_text_channel_only():
     async def predicate(ctx):
+        # Falls der User nicht in einem Voice-Channel ist, weiter
         if not ctx.author.voice or not ctx.author.voice.channel:
             return True
-        associated_text = discord.utils.get(ctx.guild.text_channels, name=ctx.author.voice.channel.name)
+
+        associated_text = discord.utils.get(
+            ctx.guild.text_channels,
+            name=ctx.author.voice.channel.name
+        )
         if associated_text and ctx.channel.id != associated_text.id:
-            await ctx.send(f"Bitte benutze den Textkanal {associated_text.mention}, der zum Voice-Channel gehört!")
+            await ctx.send(
+                f"Bitte benutze den Textkanal {associated_text.mention}, der zum Voice-Channel gehört!"
+            )
             return False
         return True
+
     return commands.check(predicate)
+
+
 bot.add_check(voice_text_channel_only())
 
 ##############################################
 # 4. Globale Variablen & Funktionen
 ##############################################
 volume = config.get('default_volume', 50)
+<<<<<<< HEAD
 # Die Queue speichert Tupel: (ctx, youtube_url, display_title)
 song_queue = deque()
+=======
+song_queue = deque()         # Speichert Tupel: (ctx, youtube_url)
+>>>>>>> v0.2.4
 played_songs = deque()
 current_song = None
 current_title = None
@@ -104,14 +147,20 @@ progress_duration = 0
 progress_last_progress = -1
 url_cache = {}
 
+
 def save_volume(vol):
     global config
     try:
         config['default_volume'] = vol
+<<<<<<< HEAD
         with open(r'config\config.json', 'w', encoding='utf-8') as f:
+=======
+        with open(r'config/config.json', 'w', encoding='utf-8') as f:
+>>>>>>> v0.2.4
             json.dump(config, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"Error saving config.json: {e}")
+
 
 ##############################################
 # 4a. Spotify-Hilfsfunktionen
@@ -126,11 +175,17 @@ async def get_spotify_track_info(url):
             album_art = info['album']['images'][0]['url']
             duration_sec = info['duration_ms'] // 1000
             print(f"DEBUG: Spotify -> {artist_name} - {track_name} ({duration_sec}s)")
+<<<<<<< HEAD
+=======
+            # Ignoriere preview_url, da sie oft DRM-behaftet ist
+>>>>>>> v0.2.4
             return None, track_name, artist_name, album_art, duration_sec, info.get('preview_url')
         except Exception as e:
             logging.error(f"Error retrieving Spotify track info: {e}")
             return None, None, None, None, None, None
+
     return await asyncio.to_thread(fetch_track_info)
+
 
 async def get_spotify_playlist_tracks(url):
     def fetch_tracks():
@@ -161,6 +216,7 @@ async def get_spotify_playlist_tracks(url):
             logging.error(f"Error retrieving Spotify playlist tracks: {e}")
             print(f"DEBUG: Error retrieving Spotify playlist tracks: {e}")
             return None
+
     return await asyncio.to_thread(fetch_tracks)
 
 ##############################################
@@ -169,9 +225,11 @@ async def get_spotify_playlist_tracks(url):
 async def get_youtube_url(query):
     return await asyncio.to_thread(get_youtube_url_sync, query)
 
+
 def get_youtube_url_sync(query):
     if query in url_cache:
         return url_cache[query]
+
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
@@ -180,9 +238,9 @@ def get_youtube_url_sync(query):
         'ignoreerrors': True,
     }
     search_queries = [
-        f"{query} full song", 
-        f"{query} audio", 
-        f"{query} official video", 
+        f"{query} full song",
+        f"{query} audio",
+        f"{query} official video",
         f"{query} official audio"
     ]
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -200,6 +258,8 @@ def get_youtube_url_sync(query):
             except Exception as e:
                 logging.error(f"Error retrieving YouTube link for query '{sq}': {e}")
                 continue
+
+        # Fallback-Suche
         try:
             print(f"DEBUG: Fallback Suche YouTube nach: {query}")
             info = ydl.extract_info(f"ytsearch:{query}", download=False)
@@ -212,20 +272,30 @@ def get_youtube_url_sync(query):
                     return video_url
         except Exception as e:
             logging.error(f"Fallback error for query '{query}': {e}")
+
     return None
+
 
 async def get_youtube_playlist_urls(url):
     def fetch_playlist_urls():
+<<<<<<< HEAD
         # Erste Option: Flat-Modus (schnell, liefert nur minimale Infos)
         ydl_opts = {
             'quiet': True,
             'extract_flat': True,
             'skip_download': True,
+=======
+        ydl_opts = {
+            'quiet': True,
+            'extract_flat': True,
+            'skip_download': True
+>>>>>>> v0.2.4
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 entries = info.get('entries', [])
+<<<<<<< HEAD
                 # Fallback: Falls Flat-Modus keine Einträge liefert, versuche es ohne extract_flat
                 if not entries:
                     print("DEBUG: Flat extraction ergab 0 Einträge, versuche ohne 'extract_flat'.")
@@ -245,11 +315,17 @@ async def get_youtube_playlist_urls(url):
                             urls.append(f"https://www.youtube.com/watch?v={entry['url']}")
                 print(f"DEBUG: {len(urls)} Videos aus der Playlist extrahiert.")
                 return urls
+=======
+                return [f"https://www.youtube.com/watch?v={entry['id']}"
+                        for entry in entries if 'id' in entry]
+>>>>>>> v0.2.4
         except Exception as e:
             logging.error(f"Error retrieving YouTube playlist URLs: {e}")
             print(f"DEBUG: Fehler beim Extrahieren der Playlist-URLs: {e}")
             return None
+
     return await asyncio.to_thread(fetch_playlist_urls)
+
 
 def extract_individual_youtube_url(url):
     try:
@@ -264,15 +340,21 @@ def extract_individual_youtube_url(url):
         logging.error(f"Error extracting individual YouTube URL: {e}")
         return None
 
+
 async def get_song_info_async(url):
     def fetch_song_info():
-        ydl_opts = {'format': 'bestaudio/best', 'noplaylist': True, 'quiet': True}
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'noplaylist': True,
+            'quiet': True
+        }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 return ydl.extract_info(url, download=False)
         except Exception as e:
             logging.error(f"Error fetching song info: {e}")
             return None
+
     return await asyncio.to_thread(fetch_song_info)
 
 ##############################################
@@ -281,12 +363,15 @@ async def get_song_info_async(url):
 @tasks.loop(seconds=5)
 async def update_progress_loop(ctx):
     global now_playing_message, progress_start_time, progress_duration, progress_last_progress
+
     if ctx.voice_client is None or not ctx.voice_client.is_connected():
         update_progress_loop.cancel()
         return
+
     if not ctx.voice_client.is_playing() and not ctx.voice_client.is_paused():
         update_progress_loop.cancel()
         return
+
     elapsed = time.time() - progress_start_time
     progress = min(elapsed / progress_duration, 1.0)
     minutes, seconds = divmod(int(elapsed), 60)
@@ -297,6 +382,7 @@ async def update_progress_loop(ctx):
     bar = "█" * filled + "░" * (bar_length - filled)
     progress_bar = f"{bar} {int(progress * 100)}%"
     new_progress_level = int(progress * 100) // 5
+
     if new_progress_level != progress_last_progress:
         progress_last_progress = new_progress_level
         embed = now_playing_message.embeds[0]
@@ -315,9 +401,20 @@ async def update_progress_loop(ctx):
         except discord.errors.NotFound:
             update_progress_loop.cancel()
             return
+
     if elapsed >= progress_duration:
         update_progress_loop.cancel()
 
+<<<<<<< HEAD
+=======
+
+def create_progress_bar(progress):
+    length = 20
+    filled = int(progress * length)
+    bar = '▰' * filled + '▱' * (length - filled)
+    return f"{bar} {int(progress * 100)}%"
+
+>>>>>>> v0.2.4
 ##############################################
 # 5. Discord Events & Befehle
 ##############################################
@@ -327,6 +424,7 @@ async def on_ready():
     for guild in bot.guilds:
         await guild.me.edit(nick='T_MusicBot')
 
+
 @bot.event
 async def on_raw_reaction_add(payload):
     global now_playing_message
@@ -334,14 +432,18 @@ async def on_raw_reaction_add(payload):
         return
     if now_playing_message is None or payload.message_id != now_playing_message.id:
         return
+
     guild = bot.get_guild(payload.guild_id)
     if guild is None:
         return
+
     member = guild.get_member(payload.user_id)
     if member is None:
         return
+
     emoji = str(payload.emoji)
     voice_client = guild.voice_client
+
     if emoji == "⏮️":
         if voice_client and (voice_client.is_playing() or voice_client.is_paused()):
             await play_previous_song(voice_client)
@@ -365,6 +467,7 @@ async def on_raw_reaction_add(payload):
                     pass
                 now_playing_message = None
             await guild.text_channels[0].send(lang['playback_stopped_emoji'])
+
     channel = bot.get_channel(payload.channel_id)
     try:
         message = await channel.fetch_message(payload.message_id)
@@ -378,20 +481,22 @@ async def on_raw_reaction_add(payload):
 ##############################################
 # !play – Song oder Playlist abspielen
 play_name, play_aliases = get_command_info('play')
+
+
 @bot.command(name=play_name, aliases=play_aliases, help=lang['play_help'])
 async def play(ctx, *, url: str):
     if not ctx.author.voice:
         await ctx.send(lang['no_voice_channel'])
         return
-    
+
     # Normalisiere Spotify-Links
     if "open.spotify.com" in url:
         url = normalize_spotify_url(url)
-    
+
     channel = ctx.author.voice.channel
     if ctx.voice_client is None:
         await channel.connect()
-    
+
     # Spotify Playlist
     if 'open.spotify.com/playlist' in url:
         all_tracks = await get_spotify_playlist_tracks(url)
@@ -456,13 +561,14 @@ async def play(ctx, *, url: str):
                 await ctx.send(lang['playback_error'])
                 return
         await ctx.send(lang['song_added_to_queue'].format(username=ctx.author.name))
-    
+
     if not ctx.voice_client.is_playing():
         await play_next_song(ctx.voice_client)
 
-# Nächsten Song aus der Queue abspielen
+
 async def play_next_song(voice_client):
     global now_playing_message, played_songs, current_song, current_title, current_thumbnail
+
     if song_queue:
         ctx, url, display_title = song_queue.popleft()
         if current_song is not None:
@@ -474,7 +580,11 @@ async def play_next_song(voice_client):
                 'format': 'bestaudio/best',
                 'noplaylist': True,
                 'verbose': True,
-                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}],
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '320'
+                }],
             }
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -514,9 +624,10 @@ async def play_next_song(voice_client):
         if voice_client and voice_client.is_connected():
             await voice_client.disconnect()
 
-# Vorherigen Song abspielen
+
 async def play_previous_song(voice_client):
     global now_playing_message, played_songs, song_queue, current_song, current_title, current_thumbnail
+
     if played_songs:
         if current_song is not None:
             song_queue.appendleft((None, current_song, "Aktueller Song"))
@@ -528,7 +639,11 @@ async def play_previous_song(voice_client):
                 'format': 'bestaudio/best',
                 'noplaylist': True,
                 'quiet': True,
-                'postprocessors': [{'key': 'FFmpegExtractAudio', 'preferredcodec': 'mp3', 'preferredquality': '320'}],
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '320'
+                }],
             }
             try:
                 with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -560,7 +675,7 @@ async def play_previous_song(voice_client):
     else:
         await voice_client.guild.text_channels[0].send(lang['no_previous_song'])
 
-# Wenn ein Song endet
+
 async def on_finished(ctx):
     global is_looping, song_queue, current_song
     if is_looping:
@@ -571,9 +686,14 @@ async def on_finished(ctx):
         if ctx.voice_client and ctx.voice_client.is_connected():
             await ctx.voice_client.disconnect()
 
+<<<<<<< HEAD
 # Jetzt-spielt-Embed senden mit Vorschau
+=======
+
+>>>>>>> v0.2.4
 async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     global now_playing_message, progress_start_time, progress_duration, progress_last_progress
+
     embed = discord.Embed(
         title="Jetzt spielt 🎶",
         description=f"[**{title}**]({current_song})",
@@ -589,15 +709,24 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     else:
         embed.add_field(name="Nächste:", value="Keine weiteren Songs in der Queue.", inline=False)
     embed.set_footer(text=config['embed_settings']['footer'])
+<<<<<<< HEAD
     # Modernes Design: Du kannst hier auch Icons oder andere Formatierungen einbauen.
+=======
+
+>>>>>>> v0.2.4
     if now_playing_message is not None:
         try:
             await now_playing_message.delete()
         except discord.errors.NotFound:
             pass
+
     now_playing_message = await ctx.send(embed=embed)
     for emoji in ["⏮️", "⏭️", "⏯️", "⏹️"]:
         await now_playing_message.add_reaction(emoji)
+<<<<<<< HEAD
+=======
+
+>>>>>>> v0.2.4
     progress_start_time = time.time()
     progress_duration = duration
     progress_last_progress = -1
@@ -607,6 +736,8 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
 # 7. Zusätzliche Befehle
 ##############################################
 volume_name, volume_aliases = get_command_info('volume')
+
+
 @bot.command(name=volume_name, aliases=volume_aliases, help=lang['volume_help'])
 async def volume_cmd(ctx, value: int = None):
     global volume
@@ -624,28 +755,40 @@ async def volume_cmd(ctx, value: int = None):
     else:
         await ctx.send(lang['no_voice_client'])
 
+
 pause_name, pause_aliases = get_command_info('pause')
+
+
 @bot.command(name=pause_name, aliases=pause_aliases, help=lang['pause_help'])
 async def pause_cmd(ctx):
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.pause()
         await ctx.send(lang['song_paused'])
 
+
 resume_name, resume_aliases = get_command_info('resume')
+
+
 @bot.command(name=resume_name, aliases=resume_aliases, help=lang['resume_help'])
 async def resume_cmd(ctx):
     if ctx.voice_client and ctx.voice_client.is_paused():
         ctx.voice_client.resume()
         await ctx.send(lang['song_resumed'])
 
+
 skip_name, skip_aliases = get_command_info('skip')
+
+
 @bot.command(name=skip_name, aliases=skip_aliases, help=lang['skip_help'])
 async def skip_cmd(ctx):
     if ctx.voice_client and ctx.voice_client.is_playing():
         ctx.voice_client.stop()
         await ctx.send(lang['song_skipped'])
 
+
 stop_name, stop_aliases = get_command_info('stop')
+
+
 @bot.command(name=stop_name, aliases=stop_aliases, help=lang['stop_help'])
 async def stop_cmd(ctx):
     global now_playing_message
@@ -663,7 +806,10 @@ async def stop_cmd(ctx):
                 pass
             now_playing_message = None
 
+
 queue_name, queue_aliases = get_command_info('queue')
+
+
 @bot.command(name=queue_name, aliases=queue_aliases, help=lang['queue_help'])
 async def queue_cmd(ctx):
     print("DEBUG: Queue-Befehl wurde aufgerufen!")
@@ -689,7 +835,10 @@ async def queue_cmd(ctx):
         print("DEBUG: Die Warteschlange ist leer.")
         await ctx.send(lang['queue_empty'])
 
+
 help_name, help_aliases = get_command_info('help')
+
+
 @bot.command(name=help_name, aliases=help_aliases, help=lang['help_help'])
 async def help_cmd(ctx):
     embed = discord.Embed(title="Hilfe - Verfügbare Befehle", color=discord.Color.green())
@@ -697,7 +846,10 @@ async def help_cmd(ctx):
         embed.add_field(name=f"{config['command_prefix']}{command.name}", value=command.help, inline=False)
     await ctx.send(embed=embed)
 
+
 loop_name, loop_aliases = get_command_info('loop')
+
+
 @bot.command(name=loop_name, aliases=loop_aliases, help=lang['loop_help'])
 async def loop_cmd(ctx):
     global is_looping
