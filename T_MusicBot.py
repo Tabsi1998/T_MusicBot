@@ -13,12 +13,16 @@ import os
 ##############################################
 # 1. Logging, Konfiguration & Sprachdateien
 ##############################################
-if not os.path.exists('error.log'):
-    with open('error.log', 'w'):
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CONFIG_PATH = os.path.join(BASE_DIR, "config", "config.json")
+LANG_PATH = os.path.join(BASE_DIR, "config", "lang.json")
+
+if not os.path.exists(os.path.join(BASE_DIR, "error.log")):
+    with open(os.path.join(BASE_DIR, "error.log"), 'w'):
         pass
 
 logging.basicConfig(
-    filename='error.log',
+    filename=os.path.join(BASE_DIR, "error.log"),
     level=logging.ERROR,
     format='%(asctime)s:%(levelname)s:%(message)s'
 )
@@ -26,11 +30,7 @@ logging.basicConfig(
 
 def load_config():
     try:
-<<<<<<< HEAD
-        with open(r'config\config.json', 'r', encoding='utf-8') as f:
-=======
-        with open(r'config/config.json', 'r', encoding='utf-8') as f:
->>>>>>> v0.2.4
+        with open(CONFIG_PATH, 'r', encoding='utf-8') as f:
             return json.load(f)
     except Exception as e:
         logging.error(f"Error loading config.json: {e}")
@@ -39,11 +39,7 @@ def load_config():
 
 def load_language(language_code):
     try:
-<<<<<<< HEAD
-        with open(r'config\lang.json', 'r', encoding='utf-8') as f:
-=======
-        with open(r'config/lang.json', 'r', encoding='utf-8') as f:
->>>>>>> v0.2.4
+        with open(LANG_PATH, 'r', encoding='utf-8') as f:
             languages = json.load(f)
             default_language = languages.get('en') or next(iter(languages.values()))
             return languages.get(language_code, default_language)
@@ -53,13 +49,7 @@ def load_language(language_code):
 
 
 def normalize_spotify_url(url: str) -> str:
-<<<<<<< HEAD
     # Entfernt unerwünschte Segmente wie "/intl-de"
-=======
-    """
-    Entfernt unerwünschte Segmente wie "/intl-de" aus dem Spotify-Link.
-    """
->>>>>>> v0.2.4
     return url.replace("/intl-de", "")
 
 
@@ -130,12 +120,8 @@ bot.add_check(voice_text_channel_only())
 # 4. Globale Variablen & Funktionen
 ##############################################
 volume = config.get('default_volume', 50)
-<<<<<<< HEAD
 # Die Queue speichert Tupel: (ctx, youtube_url, display_title)
 song_queue = deque()
-=======
-song_queue = deque()         # Speichert Tupel: (ctx, youtube_url)
->>>>>>> v0.2.4
 played_songs = deque()
 current_song = None
 current_title = None
@@ -152,11 +138,9 @@ def save_volume(vol):
     global config
     try:
         config['default_volume'] = vol
-<<<<<<< HEAD
-        with open(r'config\config.json', 'w', encoding='utf-8') as f:
-=======
-        with open(r'config/config.json', 'w', encoding='utf-8') as f:
->>>>>>> v0.2.4
+        # Nutze hier plattformunabhängige Pfade
+        config_file = os.path.join(BASE_DIR, "config", "config.json")
+        with open(config_file, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=4, ensure_ascii=False)
     except Exception as e:
         logging.error(f"Error saving config.json: {e}")
@@ -175,10 +159,6 @@ async def get_spotify_track_info(url):
             album_art = info['album']['images'][0]['url']
             duration_sec = info['duration_ms'] // 1000
             print(f"DEBUG: Spotify -> {artist_name} - {track_name} ({duration_sec}s)")
-<<<<<<< HEAD
-=======
-            # Ignoriere preview_url, da sie oft DRM-behaftet ist
->>>>>>> v0.2.4
             return None, track_name, artist_name, album_art, duration_sec, info.get('preview_url')
         except Exception as e:
             logging.error(f"Error retrieving Spotify track info: {e}")
@@ -278,25 +258,16 @@ def get_youtube_url_sync(query):
 
 async def get_youtube_playlist_urls(url):
     def fetch_playlist_urls():
-<<<<<<< HEAD
-        # Erste Option: Flat-Modus (schnell, liefert nur minimale Infos)
         ydl_opts = {
             'quiet': True,
             'extract_flat': True,
             'skip_download': True,
-=======
-        ydl_opts = {
-            'quiet': True,
-            'extract_flat': True,
-            'skip_download': True
->>>>>>> v0.2.4
         }
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 entries = info.get('entries', [])
-<<<<<<< HEAD
-                # Fallback: Falls Flat-Modus keine Einträge liefert, versuche es ohne extract_flat
+                # Falls Flat-Modus keine Einträge liefert:
                 if not entries:
                     print("DEBUG: Flat extraction ergab 0 Einträge, versuche ohne 'extract_flat'.")
                     ydl_opts.pop('extract_flat', None)
@@ -306,8 +277,7 @@ async def get_youtube_playlist_urls(url):
                 urls = []
                 for entry in entries:
                     if 'id' in entry:
-                        video_url = f"https://www.youtube.com/watch?v={entry['id']}"
-                        urls.append(video_url)
+                        urls.append(f"https://www.youtube.com/watch?v={entry['id']}")
                     elif 'url' in entry:
                         if entry['url'].startswith("http"):
                             urls.append(entry['url'])
@@ -315,10 +285,6 @@ async def get_youtube_playlist_urls(url):
                             urls.append(f"https://www.youtube.com/watch?v={entry['url']}")
                 print(f"DEBUG: {len(urls)} Videos aus der Playlist extrahiert.")
                 return urls
-=======
-                return [f"https://www.youtube.com/watch?v={entry['id']}"
-                        for entry in entries if 'id' in entry]
->>>>>>> v0.2.4
         except Exception as e:
             logging.error(f"Error retrieving YouTube playlist URLs: {e}")
             print(f"DEBUG: Fehler beim Extrahieren der Playlist-URLs: {e}")
@@ -376,7 +342,7 @@ async def update_progress_loop(ctx):
     progress = min(elapsed / progress_duration, 1.0)
     minutes, seconds = divmod(int(elapsed), 60)
     total_minutes, total_seconds = divmod(int(progress_duration), 60)
-    # Modernere Progressbar mit Block-Emojis
+
     bar_length = 20
     filled = int(progress * bar_length)
     bar = "█" * filled + "░" * (bar_length - filled)
@@ -387,10 +353,14 @@ async def update_progress_loop(ctx):
         progress_last_progress = new_progress_level
         embed = now_playing_message.embeds[0]
         embed.clear_fields()
-        embed.add_field(name="Dauer", value=f"{minutes:02d}:{seconds:02d} / {total_minutes:02d}:{total_seconds:02d}", inline=True)
+        embed.add_field(
+            name="Dauer",
+            value=f"{minutes:02d}:{seconds:02d} / {total_minutes:02d}:{total_seconds:02d}",
+            inline=True
+        )
         embed.add_field(name="Fortschritt", value=progress_bar, inline=False)
         embed.title = "⏸️ Jetzt spielt 🎶" if ctx.voice_client.is_paused() else "Jetzt spielt 🎶"
-        # Vorschau auf die nächsten 3 Songs (schön formatiert)
+        # Vorschau auf die nächsten 3 Songs
         if song_queue:
             next_tracks = [f"**{s[2]}**" for s in list(song_queue)[:3]]
             embed.add_field(name="Nächste:", value="\n".join(next_tracks), inline=False)
@@ -405,16 +375,6 @@ async def update_progress_loop(ctx):
     if elapsed >= progress_duration:
         update_progress_loop.cancel()
 
-<<<<<<< HEAD
-=======
-
-def create_progress_bar(progress):
-    length = 20
-    filled = int(progress * length)
-    bar = '▰' * filled + '▱' * (length - filled)
-    return f"{bar} {int(progress * 100)}%"
-
->>>>>>> v0.2.4
 ##############################################
 # 5. Discord Events & Befehle
 ##############################################
@@ -510,7 +470,7 @@ async def play(ctx, *, url: str):
                     print(f"DEBUG: Kein YouTube-Ergebnis für: {track}")
             await ctx.send(lang['playlist_added_spotify'].format(username=ctx.author.name) +
                            f" ({initial_count} Songs geladen, restliche werden im Hintergrund nachgeladen)")
-            
+
             async def load_remaining_tracks():
                 for track in all_tracks[initial_count:]:
                     youtube_url = await get_youtube_url(track)
@@ -519,6 +479,7 @@ async def play(ctx, *, url: str):
                     else:
                         print(f"DEBUG: Kein YouTube-Ergebnis für: {track}")
                     await asyncio.sleep(0.1)
+
             asyncio.create_task(load_remaining_tracks())
         else:
             await ctx.send(lang['playback_error'])
@@ -572,7 +533,7 @@ async def play_next_song(voice_client):
     if song_queue:
         ctx, url, display_title = song_queue.popleft()
         if current_song is not None:
-            played_songs.append((ctx, current_song))
+            played_songs.append((ctx, current_song, "Aktueller Song"))
         current_song = url
 
         def fetch_song_info(url):
@@ -686,11 +647,7 @@ async def on_finished(ctx):
         if ctx.voice_client and ctx.voice_client.is_connected():
             await ctx.voice_client.disconnect()
 
-<<<<<<< HEAD
-# Jetzt-spielt-Embed senden mit Vorschau
-=======
 
->>>>>>> v0.2.4
 async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     global now_playing_message, progress_start_time, progress_duration, progress_last_progress
 
@@ -702,18 +659,12 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     embed.set_thumbnail(url=thumbnail_url)
     total_minutes, total_seconds = divmod(int(duration), 60)
     embed.add_field(name="Dauer", value=f"{total_minutes}:{total_seconds:02d}", inline=True)
-    # Vorschau auf die nächsten 3 Songs (Display-Titel)
     if song_queue:
         next_tracks = [f"• {s[2]}" for s in list(song_queue)[:3]]
         embed.add_field(name="Nächste:", value="\n".join(next_tracks), inline=False)
     else:
         embed.add_field(name="Nächste:", value="Keine weiteren Songs in der Queue.", inline=False)
     embed.set_footer(text=config['embed_settings']['footer'])
-<<<<<<< HEAD
-    # Modernes Design: Du kannst hier auch Icons oder andere Formatierungen einbauen.
-=======
-
->>>>>>> v0.2.4
     if now_playing_message is not None:
         try:
             await now_playing_message.delete()
@@ -723,10 +674,6 @@ async def send_now_playing_embed(ctx, title, duration, thumbnail_url):
     now_playing_message = await ctx.send(embed=embed)
     for emoji in ["⏮️", "⏭️", "⏯️", "⏹️"]:
         await now_playing_message.add_reaction(emoji)
-<<<<<<< HEAD
-=======
-
->>>>>>> v0.2.4
     progress_start_time = time.time()
     progress_duration = duration
     progress_last_progress = -1
